@@ -3,7 +3,8 @@
 import { entropyBits } from "../math/stats.ts";
 
 export function weeklyEntropy(perWeekLangWeights: ReadonlyArray<Record<string, number>>): Float64Array {
-  throw new Error("todo: weeklyEntropy");
+  const out = new Float64Array(perWeekLangWeights.length);
+  for (let w = 0; w < perWeekLangWeights.length; w++)
+    out[w] = entropyBits(Object.values(perWeekLangWeights[w]));
+  return out;
 }
-
-void entropyBits;   /* stub; the implementation uses this */
