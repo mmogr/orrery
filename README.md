@@ -44,11 +44,18 @@ the sentence cannot be written, it does not ship.
 
 ## Use
 
+```sh
+npm install github:mmogr/orrery#semver:^0.1.0
+```
+
 ```ts
 import { spectralEmbedding, scaleToBox } from "@mmogr/orrery";
 
 const rest = scaleToBox(spectralEmbedding({ n, edges }), width, height);
 ```
 
-Ships as TypeScript, strict, ES modules. `npm test` runs the suites under
-Node's own test runner; `npm run demo` serves the demo page.
+Written in strict TypeScript as ES modules; `npm run build` emits the
+JavaScript and declarations the package exports (installing from git runs
+it for you). `npm test` runs the suites under Node's own test runner,
+`npm run demo` serves the demo page, and the same demo runs live at
+<https://mmogr.github.io/orrery/>.

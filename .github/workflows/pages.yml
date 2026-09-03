@@ -1,0 +1,41 @@
+# The demo, published by GitHub Pages at mmogr.github.io/orrery/: the four
+# models run live in the page, bundled from the same src/ the tests hold to
+# account. Rebuilt whenever the source or the demo changes on main.
+name: pages
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [src/**, demo/**, package.json, package-lock.json, .github/workflows/pages.yml]
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run demo:build
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: demo
+      - id: deploy
+        uses: actions/deploy-pages@v4

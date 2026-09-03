@@ -4,12 +4,28 @@
   "description": "The observatory's physics: spectral skies, Kepler orbits, a real moon, shaded terrain — small derived models for data-driven pages, with the derivations.",
   "type": "module",
   "license": "MIT",
+  "repository": "github:mmogr/orrery",
+  "homepage": "https://mmogr.github.io/orrery/",
+  "files": [
+    "dist"
+  ],
   "exports": {
-    ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "node --test \"test/**/*.test.ts\"",
-    "demo": "esbuild demo/main.ts --bundle --outdir=demo/out --servedir=demo"
+    "demo": "esbuild demo/main.ts --bundle --outdir=demo/out --servedir=demo",
+    "demo:build": "esbuild demo/main.ts --bundle --minify --outdir=demo/out"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
   }
 }
