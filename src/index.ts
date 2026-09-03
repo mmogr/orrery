@@ -26,3 +26,5 @@ export * from "./terrain/snow.ts";
 export * from "./terrain/series.ts";
 export * from "./terrain/entropy.ts";
 export * from "./camera.ts";
+export * from "./feeds/types.ts";
+export * from "./feeds/validate.ts";

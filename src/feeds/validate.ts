@@ -1,0 +1,107 @@
+/* Total validators: every function takes whatever a feed dared to send and
+   returns a clean value of the promised shape — never throwing, never
+   trusting. The rules are the site's own, formalised: GitHub only mints
+   [A-Za-z0-9._-] repo names so the name test rejects nothing real, the
+   caps sit well above today's feeds, and "(private)" passes by name as the
+   one sanctioned pseudonym. Callers own their sinks: these promise shape,
+   not markup safety — escape at the edge you print. */
+import type { GraphFeed, GraphNode, DayRecord, RepoRecord, RecentRow,
+              RepoLangs, LangBytes, Ghosts } from "./types.ts";
+
+export const okName = (r: unknown): r is string =>
+  typeof r === "string" && /^[A-Za-z0-9._-]{1,100}$/.test(r);
+
+const str = (v: unknown): string => (typeof v === "string" ? v : "");
+const num = (v: unknown): number => (Number.isFinite(+(v as number)) ? +(v as number) : 0);
+
+export function validateGraph(d: unknown, caps = { nodes: 2000, edges: 8000 }): GraphFeed {
+  const raw = (d && typeof d === "object" ? d : {}) as any;
+  const nodes: GraphNode[] = (Array.isArray(raw.nodes) ? raw.nodes : [])
+    .slice(0, caps.nodes)
+    .filter((n: any) => n && typeof n === "object")
+    .map((n: any): GraphNode => ({
+      id: str(n.id), label: str(n.label), course: str(n.course),
+      week: n.week == null ? null : num(n.week),
+      tags: Array.isArray(n.tags) ? n.tags.filter((t: unknown) => typeof t === "string") : [],
+      html: str(n.html),
+    }));
+  const ids = new Set(nodes.map(n => n.id));
+  const edges: Array<[string, string]> = (Array.isArray(raw.edges) ? raw.edges : [])
+    .map((e: any) => Array.isArray(e) ? { from: e[0], to: e[1] } : e)
+    .filter((e: any) => e && ids.has(e.from) && ids.has(e.to))
+    .slice(0, caps.edges)
+    .map((e: any) => [e.from, e.to] as [string, string]);
+  return { nodes, edges };
+}
+
+export function validateDays(days: unknown): DayRecord[] {
+  return (Array.isArray(days) ? days : [])
+    .filter((d: any) => d && typeof d === "object" && /^\d{4}-\d{2}-\d{2}$/.test(d.date))
+    .map((d: any): DayRecord => {
+      const out: DayRecord = { date: d.date, level: num(d.level), count: num(d.count) };
+      const det = d.d;
+      if (det && typeof det === "object") {
+        const nd: any = {};
+        for (const k of ["c", "p", "i", "r"] as const)
+          if (Array.isArray(det[k]))
+            nd[k] = det[k]
+              .filter((e: any) => Array.isArray(e) && (e[0] === "(private)" || okName(e[0])))
+              .map((e: any) => [e[0], num(e[1])] as [string, number]);
+        if (det.x != null) nd.x = num(det.x);
+        if (det.pl && typeof det.pl === "object")
+          nd.pl = Object.fromEntries(Object.entries(det.pl)
+            .filter(([k]) => typeof k === "string" && k.length <= 60)
+            .map(([k, v]) => [k, num(v)]));
+        out.d = nd;
+      }
+      return out;
+    });
+}
+
+export function validateRepoLangs(v: unknown): RepoLangs {
+  if (!v || typeof v !== "object") return {};
+  return Object.fromEntries(Object.entries(v as object)
+    .filter(([k, val]) => (k === "(private)" || okName(k)) && typeof val === "string")
+    .slice(0, 300)) as RepoLangs;
+}
+
+export function validateLangBytes(v: unknown): LangBytes {
+  if (!v || typeof v !== "object") return {};
+  return Object.fromEntries(Object.entries(v as object)
+    .filter(([k, val]) => okName(k) && val && typeof val === "object")
+    .slice(0, 300)
+    .map(([k, val]) => [k, Object.fromEntries(Object.entries(val as object)
+      .filter(([l]) => typeof l === "string" && l.length <= 60)
+      .map(([l, b]) => [l, num(b)]))])) as LangBytes;
+}
+
+export function validateGhosts(v: unknown): Ghosts {
+  return (Array.isArray(v) ? v : [])
+    .filter(Array.isArray).slice(0, 3)
+    .map(a => a.slice(0, 400).map(num));
+}
+
+export function validateRepos(v: unknown): RepoRecord[] {
+  return (Array.isArray(v) ? v : [])
+    .filter((r: any) => r && typeof r === "object" && okName(r.name))
+    .slice(0, 300)
+    .map((r: any): RepoRecord => ({
+      name: r.name,
+      ...(typeof r.lang === "string" ? { lang: r.lang } : {}),
+      ...(typeof r.desc === "string" ? { desc: r.desc } : {}),
+      ...(r.rel && typeof r.rel === "object" && typeof r.rel.at === "string"
+        ? { rel: { tag: str(r.rel.tag), at: r.rel.at } } : {}),
+      ...(r.fork ? { fork: true } : {}),
+      ...(r.archived ? { archived: true } : {}),
+    }));
+}
+
+export function validateRecents(v: unknown): RecentRow[] {
+  return (Array.isArray(v) ? v : [])
+    .filter((r: any) => r && typeof r === "object")
+    .map((r: any): RecentRow => ({
+      href: str(r.href ?? r.path), course: str(r.course), title: str(r.title),
+    }))
+    .filter(r => r.href)
+    .slice(0, 5);
+}
