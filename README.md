@@ -59,3 +59,10 @@ JavaScript and declarations the package exports (installing from git runs
 it for you). `npm test` runs the suites under Node's own test runner,
 `npm run demo` serves the demo page, and the same demo runs live at
 <https://mmogr.github.io/orrery/>.
+
+## Releasing
+
+The version in `package.json` is the release. Bump it on main — in a pull
+request like any other change — and the release workflow verifies the
+package, tags `vX.Y.Z` at that commit and writes the GitHub release with
+generated notes. Consumers pin the tag, as the install line above does.
