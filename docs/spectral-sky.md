@@ -113,3 +113,16 @@ isolated notes read as a scattering rather than a stack; and the choice of
 `restPull` force in docs/springs.md is the only consumer of this rest
 state; its strength there, not anything here, decides how literally the
 sky obeys the spectrum.
+
+## In practice: seed, settle, remember
+
+On the site the embedding is not the final word. Tight cliques collapse
+toward points in two eigenvectors — the spectrum separates clusters, not
+clubmates — so the raw embedding bunches. The working pattern is: the
+embedding **seeds** the layout (deterministically, where dice used to),
+the springs **settle** it for a few hundred steps with `restPull` off, and
+the settled equilibrium is written back as the rest state the session's
+`restPull` then remembers. Measured on the real notes graph this beats the
+old random-start layout on graph fidelity (0.63 vs 0.58: how many of a
+star's graph neighbours sit among its nearest stars) at the same boot cost,
+and it is the same sky on every visit.
