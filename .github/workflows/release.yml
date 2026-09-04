@@ -35,9 +35,22 @@ jobs:
         with:
           version: npm run version
           publish: npm run release
-          createGithubReleases: true
+          createGithubReleases: false   # the step below owns the tag and the release
           commit: "The next version, gathered from its changesets"
           title: "Version Packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"
+      - name: the tag and the release follow what npm now carries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          if ! npm view "@mmogr/orrery@$v" version >/dev/null 2>&1; then
+            echo "$v is not on npm yet; nothing to tag"; exit 0
+          fi
+          if gh release view "v$v" >/dev/null 2>&1; then
+            echo "v$v is already released"; exit 0
+          fi
+          awk -v h="## $v" '$0==h{p=1;next} /^## /{p=0} p' CHANGELOG.md > notes.md
+          gh release create "v$v" --target "$GITHUB_SHA" --title "v$v" --notes-file notes.md
