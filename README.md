@@ -24,6 +24,7 @@ that page, extracted because a model worth deriving is worth reading.
 | `moon` | the true lunar age from a truncated Meeus ephemeris, held against the old mean-lunation model it replaces |
 | `terrain/*` | a contribution heightfield with an analytic gradient, rivers by steepest descent, Lambert shading with a named lamp, snow by polygon clipping, and the year's derivatives, inflections and entropy |
 | `camera` | exponential follows and a damped harmonic sway, fitted from the per-frame constants they replace |
+| `math/circular` | the week on a circle: a von Mises fit to weekday commits — mean day, concentration κ, and a density that cannot overflow |
 | `math/*` | the small dense toolbox underneath: Cholesky, Jacobi eigen, Gaussian derivative kernels, DFT, lagged correlation, entropy |
 
 Every model has a derivation in [`docs/`](./docs) listing its equations and
