@@ -18,6 +18,7 @@ that page, extracted because a model worth deriving is worth reading.
 | `sky/spectral` | rest positions for a notes graph from the three smallest non-trivial eigenvectors of its normalised Laplacian — what is taught together sits together, and the third mode is depth |
 | `sky/springs` | a velocity-Verlet layer over the rest state: springs breathe, hands deform, the shape comes home |
 | `sky/heat` | the heat equation on the graph — open a note and warmth diffuses along its links |
+| `sky/curvature` | Ollivier–Ricci curvature per link, by exact optimal transport between the two ends' lazy walks — a bridge is negative, a clique positive |
 | `orbits/kepler` | activity → semi-major axis → period by $T^2 \propto a^3$; position by solving Kepler's equation, not by lookup |
 | `orbits/svd` | language space: the principal directions of a repo × language byte matrix, stretching and leaning each orbit |
 | `orbits/binaries` | double planets: repos whose commits rose and fell together, found by lagged correlation with a Fisher-z bar |
