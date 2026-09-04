@@ -21,6 +21,7 @@ that page, extracted because a model worth deriving is worth reading.
 | `orbits/kepler` | activity → semi-major axis → period by $T^2 \propto a^3$; position by solving Kepler's equation, not by lookup |
 | `orbits/svd` | language space: the principal directions of a repo × language byte matrix, stretching and leaning each orbit |
 | `orbits/binaries` | double planets: repos whose commits rose and fell together, found by lagged correlation with a Fisher-z bar |
+| `orbits/nbody` | the pull between planets: the same system with masses, integrated by leapfrog, and the along-track shift it leaves on each Kepler orbit — smaller than a pixel, on purpose |
 | `moon` | the true lunar age from a truncated Meeus ephemeris, held against the old mean-lunation model it replaces |
 | `terrain/*` | a contribution heightfield with an analytic gradient, rivers by steepest descent, Lambert shading with a named lamp, snow by polygon clipping, and the year's derivatives, inflections and entropy |
 | `camera` | exponential follows and a damped harmonic sway, fitted from the per-frame constants they replace |

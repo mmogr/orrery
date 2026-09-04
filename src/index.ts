@@ -18,6 +18,7 @@ export * from "./orbits/kepler.ts";
 export * from "./orbits/arc.ts";
 export * from "./orbits/svd.ts";
 export * from "./orbits/binaries.ts";
+export * from "./orbits/nbody.ts";
 export * from "./moon.ts";
 export * from "./terrain/heightfield.ts";
 export * from "./terrain/rivers.ts";
