@@ -1,4 +1,4 @@
-/* The demo: five models from the package, each run in this page as you
+/* The demo: six models from the package, each run in this page as you
    watch. Nothing here is a recording — the eigenvectors, the springs, the
    heat, Kepler's equation and the rivers are all computed by the same code
    the tests hold to account, importing straight from src/. */
@@ -12,6 +12,7 @@ import {
   cornerHeights, type Field, traceRivers,
   faceNormal, lambert, type V3,
   weekly, morletScales, morletPeriod, scalogram, ridge,
+  ollivierRicci,
 } from "../src/index.ts";
 
 /* ---------- the stage: one canvas, DPR-aware ---------- */
@@ -488,6 +489,70 @@ function drawBeat(): void {
   label("ridge: the loudest trustworthy period; dimmed: inside the cone", (x0 + x1) / 2, y0 - 12);
 }
 
+/* ---------- tab 6: curvature — bridges and threads ---------- */
+
+/* the same sky on its rest state, every link coloured by its Ollivier–
+   Ricci curvature: the transport cost between the lazy walks at its two
+   ends, exact. warm is negative — a bottleneck, the neighbourhoods on
+   either side barely overlap — and cool is positive, a link inside a
+   weave. beside it, the textbook case: two 5-cliques over one bridge,
+   the bridge at −3/5 and every clique edge at +5/8. computed once. */
+const kappa = ollivierRicci(graph);
+const twoCliques: Graph = (() => {
+  const edges: Array<[number, number]> = [];
+  for (let c = 0; c < 2; c++)
+    for (let a = 0; a < 5; a++) for (let b = a + 1; b < 5; b++) edges.push([5 * c + a, 5 * c + b]);
+  edges.push([4, 5]);
+  return { n: 10, edges };
+})();
+const twoKappa = ollivierRicci(twoCliques);
+let curvatureDrawn = false;
+
+function curvatureColour(k: number): string {
+  /* −1 is the house ember, +1 the cool blue, 0 the quiet grey between */
+  const t = Math.max(-1, Math.min(1, k));
+  return t < 0
+    ? `rgba(${255},${Math.round(150 + 60 * (1 + t))},${Math.round(90 + 90 * (1 + t))},0.85)`
+    : `rgba(${Math.round(180 - 90 * t)},${Math.round(180 + 40 * t)},255,${0.55 + 0.35 * t})`;
+}
+
+function drawCurved(x: ArrayLike<number>, y: ArrayLike<number>, g: Graph, k: Float64Array): void {
+  g.edges.forEach(([a, b], e) => {
+    ctx.strokeStyle = curvatureColour(k[e]);
+    ctx.lineWidth = 0.6 + 1.6 * Math.max(0, Math.min(1, (k[e] + 1) / 2));
+    ctx.beginPath();
+    ctx.moveTo(x[a], y[a]);
+    ctx.lineTo(x[b], y[b]);
+    ctx.stroke();
+  });
+  ctx.fillStyle = "rgba(210,224,255,0.95)";
+  for (let i = 0; i < g.n; i++) {
+    ctx.beginPath();
+    ctx.arc(x[i], y[i], 2.4, 0, 6.2832);
+    ctx.fill();
+  }
+}
+
+function drawCurvature(): void {
+  ctx.strokeStyle = "rgba(122,134,173,0.18)";
+  ctx.beginPath();
+  ctx.moveTo(HALF * 1.3, 24);
+  ctx.lineTo(HALF * 1.3, H - 24);
+  ctx.stroke();
+
+  const left = placed(emb, 480, 380, HALF * 0.65, H / 2 - 14);
+  drawCurved(left.x, left.y, graph, kappa);
+
+  /* the two cliques on their own rest state, small, to the right */
+  const right = placed(spectralEmbedding(twoCliques, 3), 240, 150, HALF * 1.65, H / 2 - 40);
+  drawCurved(right.x, right.y, twoCliques, twoKappa);
+
+  let lo = Infinity, hi = -Infinity;
+  for (const v of kappa) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+  label(`curvature, from ${lo.toFixed(2)} (warm, a bridge) to ${hi.toFixed(2)} (cool, a weave)`, HALF * 0.65, H - 18);
+  label(`two 5-cliques: bridge ${twoKappa[twoKappa.length - 1].toFixed(2)}, inside ${twoKappa[0].toFixed(3)}`, HALF * 1.65, H - 18);
+}
+
 /* ---------- the tabs ---------- */
 
 const CAPTIONS = [
@@ -510,6 +575,11 @@ const CAPTIONS = [
   "log-spaced periods, one cell per week and period, the cone of influence dimmed where a " +
   "wavelet would reach past the ends, and the ridge — the loudest trustworthy period each " +
   "week — drawn over it. the DFT said which rhythm the year had; this says when.",
+
+  "every link coloured by its Ollivier–Ricci curvature — one minus the exact transport " +
+  "cost between the lazy random walks at its two ends. warm and thin is a bottleneck, " +
+  "cool and firm a link inside a weave; the bridge between two 5-cliques sits at −3/5 " +
+  "by closed form, and the picture agrees.",
 ];
 
 let tab = 0;
@@ -522,18 +592,21 @@ function setTab(t: number): void {
   if (t === 0) scatterBodies();     /* watch the springs find home again */
   if (t === 3) terraDrawn = false;  /* the static tabs redraw once */
   if (t === 4) beatDrawn = false;
+  if (t === 5) curvatureDrawn = false;
 }
 buttons.forEach((b, i) => b.addEventListener("click", () => setTab(i)));
 setTab(0);
 
 function frame(now: number): void {
-  if (tab === 3 || tab === 4) {
+  if (tab === 3 || tab === 4 || tab === 5) {
     /* static: render once per visit (and once more when the fetch lands) */
-    if (tab === 3 ? !terraDrawn : !beatDrawn) {
+    const drawn = tab === 3 ? terraDrawn : tab === 4 ? beatDrawn : curvatureDrawn;
+    if (!drawn) {
       ctx.fillStyle = BG;
       ctx.fillRect(0, 0, W, H);
-      if (tab === 3) drawTerrain(); else drawBeat();
-      if (tab === 3) terraDrawn = terra !== null; else beatDrawn = beat !== null;
+      if (tab === 3) { drawTerrain(); terraDrawn = terra !== null; }
+      else if (tab === 4) { drawBeat(); beatDrawn = beat !== null; }
+      else { drawCurvature(); curvatureDrawn = true; }
     }
   } else {
     ctx.fillStyle = BG;
