@@ -3,6 +3,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  # the version pull request is opened by a token that wakes no workflow,
+  # so its checks are asked for by hand: run this workflow on its branch
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -26,7 +29,7 @@ jobs:
       - run: npm run demo:build
   changeset:
     # a change to src/ ships with its release note; docs, tests and CI alone need none
-    if: github.event_name == 'pull_request'
+    if: github.event_name != 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -35,7 +38,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - run: |
-          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          changed=$(git diff --name-only "origin/${{ github.base_ref || 'main' }}...HEAD")
           notes=$(grep -E '^\.changeset/[^/]+\.md$' <<<"$changed" | grep -v '^\.changeset/README\.md$' || true)
           if grep -q '^src/' <<<"$changed" && [ -z "$notes" ]; then
             echo "::error::src/ changed without a changeset — run 'npx changeset' and say what changed"
