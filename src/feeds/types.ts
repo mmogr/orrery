@@ -68,3 +68,18 @@ export interface SemanticFeed {
   explained?: number;            /* the share of variance the kept directions carry, 0..1 */
   notes: SemanticNote[];
 }
+
+/* the Ricci flow, baked: the sky's own graph flowed for `steps` steps at
+   ε = eps, every link's final length (edges as indices into nodes, with
+   the length), and the communities read off it — `clusters` at the cut
+   the modularity q chose. A feed with no nodes says no flow has been
+   baked. */
+export interface FlowFeed {
+  steps: number;
+  eps: number;
+  cut: number;
+  q: number;
+  clusters: number;
+  nodes: string[];                            /* note ids, once */
+  edges: Array<[number, number, number]>;     /* [i, j, length] */
+}

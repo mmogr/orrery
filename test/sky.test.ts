@@ -339,3 +339,19 @@ test("dt past the stability bound throws RangeError", () => {
   assert.throws(() => diffuse(u, L, 0.5, 1, 1), RangeError);
   assert.throws(() => diffuse(u, L, Number.NaN, 1, 1), RangeError);
 });
+
+test("a per-link length multiplies the rest length", () => {
+  const K = 40;
+  const env = { K, window: { x: 0, y: 0, hw: 1e6, hh: 1e6 }, clearing: 0, floorY: 1e6, lengths: [2] };
+  const only = { repulsion: 0, spring: 0.01, restPull: 0, windowGravity: 0, ellipse: [0, 0] as [number, number],
+                 clearing: 0, floor: 0, damping: 0.82, vcap: [2.5, 4] as [number, number] };
+  const mk = (x: number) => ({ x, y: 0, px: x, py: 0, deg: 1, temper: 0, c1: 1, s1: 0 });
+  const bodies = [mk(-60), mk(60)];
+  const rest = { x: new Float64Array(2), y: new Float64Array(2), z: new Float64Array(2) };
+  for (let i = 0; i < 3000; i++) stepLayout(bodies, [[0, 1]], rest, env, 1, only);
+  assert.ok(Math.abs(Math.abs(bodies[1].x - bodies[0].x) - 1.6 * K) < 0.05,
+    `settled at ${bodies[1].x - bodies[0].x}, wanted ${1.6 * K}`);
+  const plain = [mk(-60), mk(60)];
+  for (let i = 0; i < 3000; i++) stepLayout(plain, [[0, 1]], rest, { ...env, lengths: undefined }, 1, only);
+  assert.ok(Math.abs(Math.abs(plain[1].x - plain[0].x) - 0.8 * K) < 0.05);
+});

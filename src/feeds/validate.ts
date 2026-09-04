@@ -6,7 +6,7 @@
    one sanctioned pseudonym. Callers own their sinks: these promise shape,
    not markup safety — escape at the edge you print. */
 import type { GraphFeed, GraphNode, DayRecord, RepoRecord, RecentRow,
-              RepoLangs, LangBytes, Ghosts, SemanticFeed, SemanticNote } from "./types.ts";
+              RepoLangs, LangBytes, Ghosts, SemanticFeed, SemanticNote, FlowFeed } from "./types.ts";
 
 export const okName = (r: unknown): r is string =>
   typeof r === "string" && /^[A-Za-z0-9._-]{1,100}$/.test(r);
@@ -127,4 +127,26 @@ export function validateSemantic(d: unknown, caps = { notes: 2000, dim: 64 }): S
   if (typeof raw.explained === "number" && raw.explained >= 0 && raw.explained <= 1)
     out.explained = raw.explained;
   return out;
+}
+
+/* the flow feed: node ids are strings, a link is two indices in range and
+   a positive finite length, the counts are whole numbers, q is a
+   modularity in [−1, 1]; anything else is dropped or read as zero */
+export function validateFlow(d: unknown, caps = { nodes: 2000, edges: 8000 }): FlowFeed {
+  const raw = (d && typeof d === "object" ? d : {}) as any;
+  const nodes: string[] = (Array.isArray(raw.nodes) ? raw.nodes : [])
+    .filter((n: unknown) => typeof n === "string" && n.length > 0 && n.length <= 300)
+    .slice(0, caps.nodes);
+  const edges: Array<[number, number, number]> = (Array.isArray(raw.edges) ? raw.edges : [])
+    .filter((e: any) => Array.isArray(e) && e.length === 3
+      && Number.isInteger(e[0]) && Number.isInteger(e[1]) && e[0] !== e[1]
+      && e[0] >= 0 && e[1] >= 0 && e[0] < nodes.length && e[1] < nodes.length
+      && typeof e[2] === "number" && Number.isFinite(e[2]) && e[2] > 0)
+    .slice(0, caps.edges)
+    .map((e: any) => [e[0], e[1], e[2]] as [number, number, number]);
+  const whole = (v: unknown): number => (Number.isInteger(v) && (v as number) >= 0 ? v as number : 0);
+  const pos = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
+  const q = typeof raw.q === "number" && raw.q >= -1 && raw.q <= 1 ? raw.q : 0;
+  return { steps: whole(raw.steps), eps: pos(raw.eps), cut: pos(raw.cut), q,
+           clusters: whole(raw.clusters), nodes, edges };
 }
