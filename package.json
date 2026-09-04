@@ -4,7 +4,10 @@
   "description": "The observatory's physics: spectral skies, Kepler orbits, a real moon, shaded terrain \u2014 small derived models for data-driven pages, with the derivations.",
   "type": "module",
   "license": "MIT",
-  "repository": "github:mmogr/orrery",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mmogr/orrery.git"
+  },
   "homepage": "https://mmogr.github.io/orrery/",
   "files": [
     "dist"
