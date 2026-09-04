@@ -1,5 +1,13 @@
 # @mmogr/orrery
 
+## 0.1.1
+
+### Patch Changes
+
+- 4597ffc: The release pipeline: a standing version pull request gathered from
+  changesets, publication to npm with provenance, and the tag and GitHub
+  release cut from the same merge.
+
 ## 0.1.0
 
 The observatory's physics, first release: a spectral sky, Verlet springs,
