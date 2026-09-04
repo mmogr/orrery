@@ -62,7 +62,11 @@ it for you). `npm test` runs the suites under Node's own test runner,
 
 ## Releasing
 
-The version in `package.json` is the release. Bump it on main — in a pull
-request like any other change — and the release workflow verifies the
-package, tags `vX.Y.Z` at that commit and writes the GitHub release with
-generated notes. Consumers pin the tag, as the install line above does.
+A release note travels with the change: a pull request that alters what the
+package does adds a changeset (`npx changeset`, naming `patch`, `minor` or
+`major` with a sentence in your own words; CI insists on one when `src/`
+moves). A standing "Version Packages" pull request gathers the notes into
+`CHANGELOG.md` and the version; merging it is the release — the workflow
+tags `vX.Y.Z`, writes the GitHub release, and publishes to npm with
+provenance through trusted publishing. Consumers may pin either:
+`npm install @mmogr/orrery` or `github:mmogr/orrery#semver:^0.1.0`.

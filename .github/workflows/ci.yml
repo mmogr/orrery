@@ -24,3 +24,20 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run demo:build
+  changeset:
+    # a change to src/ ships with its release note; docs, tests and CI alone need none
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - run: |
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+          notes=$(grep -E '^\.changeset/[^/]+\.md$' <<<"$changed" | grep -v '^\.changeset/README\.md$' || true)
+          if grep -q '^src/' <<<"$changed" && [ -z "$notes" ]; then
+            echo "::error::src/ changed without a changeset — run 'npx changeset' and say what changed"
+            exit 1
+          fi
