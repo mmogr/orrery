@@ -46,8 +46,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # the version main carries — the changesets step has already bumped
-          # the working tree to the next one, so ask git, not the file
-          v="$(git show HEAD:package.json | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+          # the tree to the next one and moved HEAD onto its own branch, so
+          # ask the push that woke us, not the file and not HEAD
+          v="$(git show "$GITHUB_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
           # a fresh publish takes the registry a moment to admit to
           for i in 1 2 3 4 5 6; do
             npm view "@mmogr/orrery@$v" version >/dev/null 2>&1 && break
@@ -57,7 +58,7 @@ jobs:
           if gh release view "v$v" >/dev/null 2>&1; then
             echo "v$v is already released"; exit 0
           fi
-          git show HEAD:CHANGELOG.md | awk -v h="## $v" '$0==h{p=1;next} /^## /{p=0} p' > notes.md
+          git show "$GITHUB_SHA:CHANGELOG.md" | awk -v h="## $v" '$0==h{p=1;next} /^## /{p=0} p' > notes.md
           # the tag goes on the commit that set this version, not on whatever push woke us
-          at="$(git log -1 --format=%H -G"\"version\": \"$v\"" -- package.json)"
+          at="$(git log "$GITHUB_SHA" -1 --format=%H -G"\"version\": \"$v\"" -- package.json)"
           gh release create "v$v" --target "${at:-$GITHUB_SHA}" --title "v$v" --notes-file notes.md
