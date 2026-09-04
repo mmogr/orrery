@@ -11,6 +11,7 @@ export * from "./math/kernels.ts";
 export * from "./math/dft.ts";
 export * from "./math/wavelet.ts";
 export * from "./math/stats.ts";
+export * from "./math/circular.ts";
 export * from "./sky/laplacian.ts";
 export * from "./sky/spectral.ts";
 export * from "./sky/springs.ts";
