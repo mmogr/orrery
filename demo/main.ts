@@ -1,4 +1,4 @@
-/* The demo: six models from the package, each run in this page as you
+/* The demo: seven models from the package, each run in this page as you
    watch. Nothing here is a recording — the eigenvectors, the springs, the
    heat, Kepler's equation and the rivers are all computed by the same code
    the tests hold to account, importing straight from src/. */
@@ -13,6 +13,7 @@ import {
   faceNormal, lambert, type V3,
   weekly, morletScales, morletPeriod, scalogram, ridge,
   ollivierRicci,
+  semanticLayout, semanticLinks, semanticAgreement,
 } from "../src/index.ts";
 
 /* ---------- the stage: one canvas, DPR-aware ---------- */
@@ -34,6 +35,7 @@ const capEl = document.getElementById("caption")!;
    each, and a few bridges between them — the shape of a term's notes.
    Every roll comes from the package's own LCG, so the graph is the same
    graph on every load. */
+const clusterOf: number[] = [];      /* which of the three clusters each star came from */
 function makeGraph(seed: number): Graph {
   const rnd = rng(seed);
   const sizes = [0, 0, 0].map(() => 12 + Math.floor(rnd() * 7));
@@ -47,6 +49,7 @@ function makeGraph(seed: number): Graph {
   let n = 0;
   for (const size of sizes) {
     const ids = Array.from({ length: size }, (_, i) => n + i);
+    for (const id of ids) clusterOf[id] = clusters.length;
     clusters.push(ids);
     for (let i = 1; i < size; i++) link(ids[i], ids[Math.floor(rnd() * i)]);
     for (let e = 0; e < Math.floor(size * 0.8); e++)
@@ -553,6 +556,67 @@ function drawCurvature(): void {
   label(`two 5-cliques: bridge ${twoKappa[twoKappa.length - 1].toFixed(2)}, inside ${twoKappa[0].toFixed(3)}`, HALF * 1.65, H - 18);
 }
 
+/* ---------- tab 7: meaning — the sky by what the notes say ---------- */
+
+/* the same sky, laid out by meaning instead of links. the demo has no
+   text, so each star's "embedding" is its cluster's centre in sixteen
+   dimensions plus its own noise — what a language model would hand back
+   for three topics' worth of notes. the package turns that plane to face
+   the link layout (Procrustes), lists the strongest unlinked pairs, and
+   asks Mantel's test how far meaning and links agree. computed once. */
+const DIM = 16;
+const meaning = (() => {
+  const rnd = rng(13);
+  const centre = Array.from({ length: 3 }, () => Float64Array.from({ length: DIM }, () => rnd() - 0.5));
+  const v = new Float64Array(graph.n * DIM);
+  for (let i = 0; i < graph.n; i++)
+    for (let k = 0; k < DIM; k++) v[i * DIM + k] = centre[clusterOf[i]][k] + (rnd() - 0.5) * 0.35;
+  return v;
+})();
+const meaningLocal = semanticLayout(meaning, graph.n, DIM, restLocal, 330, 380);
+const agreement = semanticAgreement(meaning, graph.n, DIM, graph, { permutations: 200, seed: 1 });
+const suggested = semanticLinks(meaning, graph.n, DIM, graph);
+let meaningDrawn = false;
+
+const TOPIC = ["rgba(255,200,55,0.95)", "rgba(120,200,255,0.95)", "rgba(190,150,255,0.95)"];
+
+function drawMeaning(): void {
+  ctx.strokeStyle = "rgba(122,134,173,0.18)";
+  ctx.beginPath();
+  ctx.moveTo(HALF, 24);
+  ctx.lineTo(HALF, H - 24);
+  ctx.stroke();
+
+  const right = { x: Float64Array.from(meaningLocal.x, v => v + HALF * 1.5),
+                  y: Float64Array.from(meaningLocal.y, v => v + H / 2 - 14) };
+  for (const [x, y] of [[restLeft.x, restLeft.y], [right.x, right.y]] as const) {
+    ctx.strokeStyle = "rgba(90,125,215,0.3)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (const [a, b] of graph.edges) { ctx.moveTo(x[a], y[a]); ctx.lineTo(x[b], y[b]); }
+    ctx.stroke();
+  }
+  /* the suggestions: dashed, on both layouts, so the eye can find the pair */
+  ctx.setLineDash([3, 5]);
+  ctx.strokeStyle = "rgba(200,225,255,0.55)";
+  for (const [x, y] of [[restLeft.x, restLeft.y], [right.x, right.y]] as const) {
+    ctx.beginPath();
+    for (const [a, b] of suggested) { ctx.moveTo(x[a], y[a]); ctx.lineTo(x[b], y[b]); }
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+  for (const [x, y] of [[restLeft.x, restLeft.y], [right.x, right.y]] as const)
+    for (let i = 0; i < graph.n; i++) {
+      ctx.fillStyle = TOPIC[clusterOf[i]];
+      ctx.beginPath();
+      ctx.arc(x[i], y[i], 2.6, 0, 6.2832);
+      ctx.fill();
+    }
+  label("by links: the spectral rest state", HALF / 2, H - 18);
+  label(`by meaning, turned to face it — ρ = ${agreement.rho.toFixed(2)}, p = ${agreement.p.toFixed(3)}, ` +
+        `${suggested.length} unlinked pairs that agree`, HALF * 1.5, H - 18);
+}
+
 /* ---------- the tabs ---------- */
 
 const CAPTIONS = [
@@ -580,6 +644,12 @@ const CAPTIONS = [
   "cost between the lazy random walks at its two ends. warm and thin is a bottleneck, " +
   "cool and firm a link inside a weave; the bridge between two 5-cliques sits at −3/5 " +
   "by closed form, and the picture agrees.",
+
+  "the same sky twice: by its links, and by what its notes say. each star's meaning is a " +
+  "sixteen-dimensional vector (here: its topic's centre plus noise; on the real site, a language " +
+  "model's embedding of the note), the plane of the first two turned by Procrustes to face the link " +
+  "layout. dashed: the strongest pairs that agree in meaning and never link. ρ and p are Mantel's " +
+  "test — Spearman between hop distance and cosine distance, against two hundred relabelled skies.",
 ];
 
 let tab = 0;
@@ -593,20 +663,22 @@ function setTab(t: number): void {
   if (t === 3) terraDrawn = false;  /* the static tabs redraw once */
   if (t === 4) beatDrawn = false;
   if (t === 5) curvatureDrawn = false;
+  if (t === 6) meaningDrawn = false;
 }
 buttons.forEach((b, i) => b.addEventListener("click", () => setTab(i)));
 setTab(0);
 
 function frame(now: number): void {
-  if (tab === 3 || tab === 4 || tab === 5) {
+  if (tab >= 3) {
     /* static: render once per visit (and once more when the fetch lands) */
-    const drawn = tab === 3 ? terraDrawn : tab === 4 ? beatDrawn : curvatureDrawn;
+    const drawn = tab === 3 ? terraDrawn : tab === 4 ? beatDrawn : tab === 5 ? curvatureDrawn : meaningDrawn;
     if (!drawn) {
       ctx.fillStyle = BG;
       ctx.fillRect(0, 0, W, H);
       if (tab === 3) { drawTerrain(); terraDrawn = terra !== null; }
       else if (tab === 4) { drawBeat(); beatDrawn = beat !== null; }
-      else { drawCurvature(); curvatureDrawn = true; }
+      else if (tab === 5) { drawCurvature(); curvatureDrawn = true; }
+      else { drawMeaning(); meaningDrawn = true; }
     }
   } else {
     ctx.fillStyle = BG;

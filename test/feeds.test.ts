@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateGraph, validateDays, validateRepoLangs, validateGhosts,
-         validateRepos, validateLangBytes, validateRecents, okName }
+         validateRepos, validateLangBytes, validateRecents, validateSemantic, okName }
   from "../src/feeds/validate.ts";
 
 test("okName is GitHub's alphabet and nothing more", () => {
@@ -86,4 +86,37 @@ test("recents cap at five and answer to href or path", () => {
   assert.equal(r.length, 5);
   assert.equal(r[0].href, "a.html");
   assert.equal(r[1].href, "b.html");
+});
+
+test("validateSemantic keeps only notes that carry exactly dim finite numbers", () => {
+  const f = validateSemantic({
+    dim: 3, model: "nomic-embed-text-v1.5", explained: 0.6, evil: 1,
+    notes: [
+      { html: "a.html", v: [1, 2, 3], extra: true },
+      { html: "b.html", v: [1, 2] },                  /* short */
+      { html: "c.html", v: [1, 2, "3"] },             /* not a number */
+      { html: "d.html", v: [1, 2, NaN] },             /* not finite */
+      { html: "a.html", v: [9, 9, 9] },               /* duplicate: the first wins */
+      { html: 5, v: [1, 2, 3] },                      /* no key */
+      { html: "e.html", v: [0, 0, 0] },
+      null, "junk",
+    ],
+  });
+  assert.deepEqual(f, { dim: 3, model: "nomic-embed-text-v1.5", explained: 0.6,
+    notes: [{ html: "a.html", v: [1, 2, 3] }, { html: "e.html", v: [0, 0, 0] }] });
+  assert.ok(!("evil" in f) && !("extra" in f.notes[0]));
+});
+
+test("validateSemantic empties a feed with a bad dim and accepts the empty contract", () => {
+  assert.deepEqual(validateSemantic({ dim: 2.5, notes: [{ html: "a.html", v: [1, 2] }] }), { dim: 0, notes: [] });
+  assert.deepEqual(validateSemantic({ dim: 65, notes: [] }), { dim: 0, notes: [] });
+  assert.deepEqual(validateSemantic({ dim: 0, notes: [] }), { dim: 0, notes: [] });
+  assert.deepEqual(validateSemantic(null), { dim: 0, notes: [] });
+  /* dim with no surviving note is dim 0: the page reads one field */
+  assert.deepEqual(validateSemantic({ dim: 4, notes: [{ html: "a.html", v: [1] }] }), { dim: 0, notes: [] });
+  /* a bad model or explained is dropped, not the feed */
+  assert.deepEqual(validateSemantic({ dim: 1, model: 7, explained: 2, notes: [{ html: "a.html", v: [1] }] }),
+    { dim: 1, notes: [{ html: "a.html", v: [1] }] });
+  assert.equal(validateSemantic({ dim: 1, notes: Array.from({ length: 5 }, (_, i) => ({ html: `${i}.html`, v: [1] })) },
+    { notes: 3, dim: 64 }).notes.length, 3);
 });

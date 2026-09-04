@@ -51,3 +51,20 @@ export interface RecentRow {
 export type RepoLangs = Record<string, string>;
 export type LangBytes = Record<string, Record<string, number>>;
 export type Ghosts = number[][];
+
+/* the notes' meaning: each note's embedding, reduced by the notes site to
+   its leading principal directions (ordered by variance, each signed so its
+   largest-|entry| note is positive) and published beside the graph. dim
+   is the length of every v; a feed with dim 0 says the notes have not
+   published their meaning yet. */
+export interface SemanticNote {
+  html: string;                  /* the same key the graph's nodes carry */
+  v: number[];                   /* exactly dim coordinates */
+}
+
+export interface SemanticFeed {
+  dim: number;
+  model?: string;                /* the embedding model, for the legend */
+  explained?: number;            /* the share of variance the kept directions carry, 0..1 */
+  notes: SemanticNote[];
+}

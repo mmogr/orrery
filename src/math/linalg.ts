@@ -2,6 +2,8 @@
    problems a few hundred wide. Nothing here allocates per frame; everything
    is deterministic. */
 
+import type { Embedding } from "../sky/spectral.ts";
+
 /* Cholesky factor L (lower) of a symmetric positive-definite A, so LLᵀ = A.
    Throws if A is not positive definite. A is not modified. */
 export function cholesky(A: Float64Array, n: number): Float64Array {
@@ -103,4 +105,51 @@ export function orthogonalise(v: Float64Array, basis: Float64Array[]): void {
     for (let i = 0; i < v.length; i++) d += v[i] * b[i];
     for (let i = 0; i < v.length; i++) v[i] -= d * b[i];
   }
+}
+
+/* Orthogonal Procrustes in the plane: the rotation or reflection R, and
+   the shift, that carry the points of `src` closest to those of `dst` in
+   the least-squares sense — no scaling, so a layout keeps its own size
+   and only turns to face the other. Both are centred, M = Σ (s−s̄)(d−d̄)ᵀ,
+   and R = U Vᵀ from M's singular vectors; a degenerate M (points on a
+   line, or fewer than two) completes the missing direction orthogonally.
+   Depth passes through untouched. */
+export function procrustes(src: Embedding, dst: Embedding): Embedding {
+  const n = Math.min(src.x.length, dst.x.length);
+  let sx = 0, sy = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) { sx += src.x[i]; sy += src.y[i]; dx += dst.x[i]; dy += dst.y[i]; }
+  if (n) { sx /= n; sy /= n; dx /= n; dy /= n; }
+  /* cross-covariance M (2×2, row-major) */
+  const M = new Float64Array(4);
+  for (let i = 0; i < n; i++) {
+    const a = src.x[i] - sx, b = src.y[i] - sy, c = dst.x[i] - dx, d = dst.y[i] - dy;
+    M[0] += a * c; M[1] += a * d; M[2] += b * c; M[3] += b * d;
+  }
+  /* MᵀM = V Σ² Vᵀ; U = M V / σ, completed orthogonally where σ vanishes */
+  const MtM = new Float64Array([
+    M[0] * M[0] + M[2] * M[2], M[0] * M[1] + M[2] * M[3],
+    M[0] * M[1] + M[2] * M[3], M[1] * M[1] + M[3] * M[3]]);
+  const { values, vectors } = jacobiEigen(MtM, 2);
+  const scale = Math.sqrt(Math.max(values[0], values[1], 0)) || 1;
+  const U: number[][] = [], V: number[][] = [];
+  for (const c of [1, 0]) {                 /* largest singular value first */
+    const v = [vectors[c * 2], vectors[c * 2 + 1]];
+    const sigma = Math.sqrt(Math.max(values[c], 0));
+    let u: number[];
+    if (sigma > scale * 1e-9) u = [(M[0] * v[0] + M[1] * v[1]) / sigma, (M[2] * v[0] + M[3] * v[1]) / sigma];
+    else if (U.length) u = [-U[0][1], U[0][0]];
+    else u = [1, 0];
+    U.push(u); V.push(v);
+  }
+  /* R = U Vᵀ */
+  const R = [
+    U[0][0] * V[0][0] + U[1][0] * V[1][0], U[0][0] * V[0][1] + U[1][0] * V[1][1],
+    U[0][1] * V[0][0] + U[1][1] * V[1][0], U[0][1] * V[0][1] + U[1][1] * V[1][1]];
+  const x = new Float64Array(src.x.length), y = new Float64Array(src.y.length);
+  for (let i = 0; i < src.x.length; i++) {
+    const a = src.x[i] - sx, b = src.y[i] - sy;
+    x[i] = R[0] * a + R[1] * b + dx;
+    y[i] = R[2] * a + R[3] * b + dy;
+  }
+  return { x, y, z: Float64Array.from(src.z) };
 }

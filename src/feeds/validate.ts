@@ -6,7 +6,7 @@
    one sanctioned pseudonym. Callers own their sinks: these promise shape,
    not markup safety — escape at the edge you print. */
 import type { GraphFeed, GraphNode, DayRecord, RepoRecord, RecentRow,
-              RepoLangs, LangBytes, Ghosts } from "./types.ts";
+              RepoLangs, LangBytes, Ghosts, SemanticFeed, SemanticNote } from "./types.ts";
 
 export const okName = (r: unknown): r is string =>
   typeof r === "string" && /^[A-Za-z0-9._-]{1,100}$/.test(r);
@@ -104,4 +104,27 @@ export function validateRecents(v: unknown): RecentRow[] {
     }))
     .filter(r => r.href)
     .slice(0, 5);
+}
+
+/* the semantic feed: dim must be a whole number within the cap or the feed
+   is empty; a note must carry a string html and exactly dim finite numbers
+   or it is dropped; the first note wins a duplicate html; model and
+   explained ride along only when they are the promised shape */
+export function validateSemantic(d: unknown, caps = { notes: 2000, dim: 64 }): SemanticFeed {
+  const raw = (d && typeof d === "object" ? d : {}) as any;
+  const dim = Number.isInteger(raw.dim) && raw.dim >= 0 && raw.dim <= caps.dim ? raw.dim : 0;
+  const seen = new Set<string>();
+  const notes: SemanticNote[] = dim ? (Array.isArray(raw.notes) ? raw.notes : [])
+    .filter((n: any) => n && typeof n === "object" && typeof n.html === "string"
+      && n.html.length > 0 && n.html.length <= 300
+      && Array.isArray(n.v) && n.v.length === dim
+      && n.v.every((x: unknown) => typeof x === "number" && Number.isFinite(x)))
+    .filter((n: any) => !seen.has(n.html) && seen.add(n.html))
+    .slice(0, caps.notes)
+    .map((n: any): SemanticNote => ({ html: n.html, v: n.v.map((x: number) => +x) })) : [];
+  const out: SemanticFeed = { dim: notes.length ? dim : 0, notes };
+  if (typeof raw.model === "string" && raw.model.length <= 100) out.model = raw.model;
+  if (typeof raw.explained === "number" && raw.explained >= 0 && raw.explained <= 1)
+    out.explained = raw.explained;
+  return out;
 }
