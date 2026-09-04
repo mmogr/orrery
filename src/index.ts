@@ -9,6 +9,7 @@ export * from "./observables.ts";
 export * from "./math/linalg.ts";
 export * from "./math/kernels.ts";
 export * from "./math/dft.ts";
+export * from "./math/wavelet.ts";
 export * from "./math/stats.ts";
 export * from "./sky/laplacian.ts";
 export * from "./sky/spectral.ts";

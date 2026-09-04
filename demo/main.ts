@@ -1,4 +1,4 @@
-/* The demo: four models from the package, each run in this page as you
+/* The demo: five models from the package, each run in this page as you
    watch. Nothing here is a recording — the eigenvectors, the springs, the
    heat, Kepler's equation and the rivers are all computed by the same code
    the tests hold to account, importing straight from src/. */
@@ -11,6 +11,7 @@ import {
   elementsFrom, orbitFrac, arcPos, type Elements,
   cornerHeights, type Field, traceRivers,
   faceNormal, lambert, type V3,
+  weekly, morletScales, morletPeriod, scalogram, ridge,
 } from "../src/index.ts";
 
 /* ---------- the stage: one canvas, DPR-aware ---------- */
@@ -327,6 +328,13 @@ async function loadTerrain(): Promise<void> {
   const frontRow = cellRC.flatMap(([r, c], i) => (r === 6 ? [{ c, i }] : []));
   terra = { cols, field, rivers, frontRow, cellRC, cellH };
   terraDrawn = false;
+  /* the same days binned the package's own way — sevens from day 0, the
+     last partial week kept — give tab 5 its 53-week series */
+  const weeks = weekly(days.map(d => d.count));
+  const scales = morletScales(weeks.length);
+  const sg = scalogram(weeks, scales);
+  beat = { weeks, scales, sg, crest: ridge(sg, scales, weeks.length) };
+  beatDrawn = false;
 }
 loadTerrain();
 
@@ -411,6 +419,75 @@ function drawTerrain(): void {
   }
 }
 
+/* ---------- tab 5: the year's beat — a scalogram of the weeks ---------- */
+
+/* the terrain's year again, summed to weeks and convolved with Morlet
+   wavelets at 24 log-spaced periods from two weeks to half the year.
+   Each cell is the power at one week and one period; the cone of
+   influence — where a wavelet would reach past the ends — is dimmed rather
+   than hidden, and the ridge, the loudest trustworthy period each week,
+   is drawn over the top. Short periods sit at the top of the picture. */
+interface Beat {
+  weeks: Float64Array;
+  scales: Float64Array;
+  sg: { power: Float64Array; coi: Float64Array };
+  crest: { period: Float64Array; power: Float64Array };
+}
+let beat: Beat | null = null;
+let beatDrawn = false;
+
+function drawBeat(): void {
+  if (!beat) {
+    label("fetching the year…", W / 2, H / 2);
+    return;
+  }
+  const { weeks, scales, sg, crest } = beat;
+  const n = weeks.length, S = scales.length;
+  const x0 = 72, x1 = W - 36, y0 = 40, y1 = H - 64;
+  const cw = (x1 - x0) / n, rh = (y1 - y0) / S;
+  /* rows are log-spaced in period, so a period's row is linear in its log */
+  const pLo = morletPeriod(scales[0]), pHi = morletPeriod(scales[S - 1]);
+  const rowOf = (p: number): number => ((S - 1) * Math.log(p / pLo)) / Math.log(pHi / pLo);
+  const yOf = (p: number): number => y0 + (rowOf(p) + 0.5) * rh;
+
+  let max = 0;
+  for (const v of sg.power) max = Math.max(max, v);
+  /* the ramp: night blue up to the house gold, with a 0.6 power so the
+     quieter beats still show against the loud quarter */
+  for (let k = 0; k < S; k++)
+    for (let t = 0; t < n; t++) {
+      const f = max ? Math.pow(sg.power[k * n + t] / max, 0.6) : 0;
+      const dim = scales[k] > sg.coi[t] ? 0.3 : 1;
+      const R = 255 * f, G = 200 * f, B = 15 + 200 * f * (1 - f) + 55 * f;
+      ctx.fillStyle = `rgba(${R | 0},${G | 0},${B | 0},${dim})`;
+      ctx.fillRect(x0 + t * cw, y0 + k * rh, cw + 0.5, rh + 0.5);
+    }
+
+  /* the ridge: a polyline through every week the crest is defined,
+     lifted where the cone or silence breaks it */
+  ctx.strokeStyle = "#e8ecff";
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  let pen = false;
+  for (let t = 0; t < n; t++) {
+    if (!(crest.power[t] > 0)) { pen = false; continue; }
+    const px = x0 + (t + 0.5) * cw, py = yOf(crest.period[t]);
+    if (pen) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    pen = true;
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(122,134,173,0.35)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+  for (let p = 2; p <= pHi; p *= 2) label(`${p} wk`, x0 - 30, yOf(p) + 3);
+  for (let t = 0; t <= n; t += 13) label(`wk ${t}`, x0 + t * cw, y1 + 16);
+  label("period — weeks", x0 - 30, y0 - 12);
+  label("week of the year", (x0 + x1) / 2, H - 22);
+  label("ridge: the loudest trustworthy period; dimmed: inside the cone", (x0 + x1) / 2, y0 - 12);
+}
+
 /* ---------- the tabs ---------- */
 
 const CAPTIONS = [
@@ -428,6 +505,11 @@ const CAPTIONS = [
   "a year of commits as a bilinear heightfield under the named lamp, rivers traced by " +
   "steepest descent from every summit — rain leaving the year. computed from the data " +
   "at load, not drawn by hand.",
+
+  "the same year as a scalogram: Morlet wavelets convolved with the weekly commits at 24 " +
+  "log-spaced periods, one cell per week and period, the cone of influence dimmed where a " +
+  "wavelet would reach past the ends, and the ridge — the loudest trustworthy period each " +
+  "week — drawn over it. the DFT said which rhythm the year had; this says when.",
 ];
 
 let tab = 0;
@@ -438,19 +520,20 @@ function setTab(t: number): void {
   buttons.forEach((b, i) => b.classList.toggle("on", i === t));
   capEl.textContent = CAPTIONS[t];
   if (t === 0) scatterBodies();     /* watch the springs find home again */
-  if (t === 3) terraDrawn = false;  /* the one static tab redraws once */
+  if (t === 3) terraDrawn = false;  /* the static tabs redraw once */
+  if (t === 4) beatDrawn = false;
 }
 buttons.forEach((b, i) => b.addEventListener("click", () => setTab(i)));
 setTab(0);
 
 function frame(now: number): void {
-  if (tab === 3) {
+  if (tab === 3 || tab === 4) {
     /* static: render once per visit (and once more when the fetch lands) */
-    if (!terraDrawn) {
+    if (tab === 3 ? !terraDrawn : !beatDrawn) {
       ctx.fillStyle = BG;
       ctx.fillRect(0, 0, W, H);
-      drawTerrain();
-      terraDrawn = terra !== null;
+      if (tab === 3) drawTerrain(); else drawBeat();
+      if (tab === 3) terraDrawn = terra !== null; else beatDrawn = beat !== null;
     }
   } else {
     ctx.fillStyle = BG;
