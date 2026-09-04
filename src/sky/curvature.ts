@@ -10,10 +10,16 @@
    regularisation stands between the number and its meaning.
    See docs/curvature.md. */
 import type { Graph } from "./laplacian.ts";
+import { shortestPaths } from "./paths.ts";
 
 export interface CurvatureOpts {
   /* the walk's laziness: the mass that stays put. ½ is Ollivier's usual */
   alpha: number;
+  /* link lengths, indexed like g.edges: with them the walks' costs are
+     shortest-path lengths and each κ is 1 − W₁ / ℓ, Ollivier's definition
+     on a metric graph; without them every link is one hop long and the
+     costs come from a three-hop table, bit for bit as before */
+  lengths?: ArrayLike<number>;
 }
 
 const DEFAULTS: CurvatureOpts = { alpha: 0.5 };
@@ -85,6 +91,7 @@ export function transportCost(a: Float64Array, b: Float64Array, C: Float64Array)
    says nothing and gets 0 */
 export function ollivierRicci(g: Graph, opts?: Partial<CurvatureOpts>): Float64Array {
   const { alpha } = { ...DEFAULTS, ...opts };
+  const lengths = opts?.lengths;
   const n = g.n;
   const adj: number[][] = Array.from({ length: n }, () => []);
   for (const [a, b] of g.edges) {
@@ -96,9 +103,11 @@ export function ollivierRicci(g: Graph, opts?: Partial<CurvatureOpts>): Float64A
      since u – i – j – v joins them. One breadth-first walk per node, once,
      so each link reads its costs from a table instead of walking again */
   const FAR = 255;
-  const hops = new Uint8Array(n * n).fill(FAR);
+  const hops = new Uint8Array(lengths ? 0 : n * n).fill(FAR);
   const queue = new Int32Array(n);
-  for (let u = 0; u < n; u++) {
+  /* with lengths the table is the metric itself: shortest paths, exact */
+  const dist = lengths ? shortestPaths(g, lengths) : null;
+  for (let u = 0; !lengths && u < n; u++) {
     const row = u * n;
     hops[row + u] = 0;
     let head = 0, tail = 0;
@@ -137,8 +146,9 @@ export function ollivierRicci(g: Graph, opts?: Partial<CurvatureOpts>): Float64A
     const a = Float64Array.from(av, v => v / total), b = Float64Array.from(bv, v => v / total);
     const C = new Float64Array(Si.length * Sj.length);
     for (let p = 0; p < Si.length; p++)
-      for (let q = 0; q < Sj.length; q++) C[p * Sj.length + q] = hops[Si[p] * n + Sj[q]];
-    out[e] = 1 - total * transportCost(a, b, C);
+      for (let q = 0; q < Sj.length; q++)
+        C[p * Sj.length + q] = dist ? dist[Si[p] * n + Sj[q]] : hops[Si[p] * n + Sj[q]];
+    out[e] = 1 - total * transportCost(a, b, C) / (lengths ? lengths[e] : 1);
   });
   return out;
 }

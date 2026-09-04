@@ -1,4 +1,4 @@
-/* The demo: seven models from the package, each run in this page as you
+/* The demo: eight models from the package, each run in this page as you
    watch. Nothing here is a recording — the eigenvectors, the springs, the
    heat, Kepler's equation and the rivers are all computed by the same code
    the tests hold to account, importing straight from src/. */
@@ -6,7 +6,7 @@ import {
   rng,
   type Graph, normalisedLaplacian,
   spectralEmbedding, scaleToBox, type Embedding,
-  type Body, stepLayout, type LayoutEnv,
+  type Body, stepLayout, type LayoutEnv, DEFAULT_FORCES,
   diffuse,
   elementsFrom, orbitFrac, arcPos, type Elements,
   cornerHeights, type Field, traceRivers,
@@ -14,6 +14,7 @@ import {
   weekly, morletScales, morletPeriod, scalogram, ridge,
   ollivierRicci,
   semanticLayout, semanticLinks, semanticAgreement,
+  ricciFlowStep, cutCommunities,
 } from "../src/index.ts";
 
 /* ---------- the stage: one canvas, DPR-aware ---------- */
@@ -617,6 +618,69 @@ function drawMeaning(): void {
         `${suggested.length} unlinked pairs that agree`, HALF * 1.5, H - 18);
 }
 
+/* ---------- tab 8: Ricci flow — the sky parts into its communities ---------- */
+
+/* the same sky under the flow: every link's length follows its curvature,
+   a bridge stretching and a weave tightening, twelve steps computed once
+   and played through by the springs — each link's rest length is its
+   flowed length, and homesickness is off so the communities are free to
+   part. edges wear the curvature that drove the step; past the cut that
+   modularity chose they fade; the stars wear the community the final
+   lengths put them in. */
+const FLOW_STEPS = 12, FLOW_TICK = 600;
+const flowLengths: Float64Array[] = [new Float64Array(graph.edges.length).fill(1)];
+const flowKappa: Float64Array[] = [];
+for (let s = 0; s < FLOW_STEPS; s++) {
+  const L = Float64Array.from(flowLengths[s]);
+  flowKappa.push(ricciFlowStep(graph, L));
+  flowLengths.push(L);
+}
+flowKappa.push(flowKappa[FLOW_STEPS - 1]);
+const flowCut = cutCommunities(graph, flowLengths[FLOW_STEPS]);
+const flowForces = { ...DEFAULT_FORCES, restPull: 0 };
+const flowNow = new Float64Array(graph.edges.length);
+let flowBodies: Body[] = [];
+let flowStart = 0;
+
+function resetFlow(now: number): void {
+  flowStart = now;
+  flowBodies = Array.from({ length: graph.n }, (_, i) => ({
+    x: restLocal.x[i], y: restLocal.y[i], px: restLocal.x[i], py: restLocal.y[i],
+    deg: degree[i], temper: 0, c1: 1, s1: 0 }));
+}
+
+function drawFlow(now: number): void {
+  if (!flowBodies.length) resetFlow(now);
+  const phase = (now - flowStart) / FLOW_TICK;
+  if (phase > FLOW_STEPS + 4) { resetFlow(now); return; }
+  const at = Math.min(FLOW_STEPS, phase);
+  const lo = Math.floor(at), hi = Math.min(FLOW_STEPS, lo + 1), f = at - lo;
+  for (let e = 0; e < flowNow.length; e++)
+    flowNow[e] = flowLengths[lo][e] + (flowLengths[hi][e] - flowLengths[lo][e]) * f;
+  for (let k = 0; k < 3; k++)
+    stepLayout(flowBodies, graph.edges, restLocal, { ...springEnv, lengths: flowNow }, 1, flowForces);
+  const cx = HALF, cy = H / 2 - 14;
+  graph.edges.forEach(([a, b], e) => {
+    const past = flowNow[e] > flowCut.cut;
+    ctx.strokeStyle = curvatureColour(flowKappa[lo][e]);
+    ctx.globalAlpha = past ? 0.15 : 1;
+    ctx.lineWidth = 0.6 + 1.6 * Math.max(0, Math.min(1, (flowKappa[lo][e] + 1) / 2));
+    ctx.beginPath();
+    ctx.moveTo(cx + flowBodies[a].x, cy + flowBodies[a].y);
+    ctx.lineTo(cx + flowBodies[b].x, cy + flowBodies[b].y);
+    ctx.stroke();
+  });
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < graph.n; i++) {
+    ctx.fillStyle = TOPIC[flowCut.label[i] % TOPIC.length];
+    ctx.beginPath();
+    ctx.arc(cx + flowBodies[i].x, cy + flowBodies[i].y, 2.6, 0, 6.2832);
+    ctx.fill();
+  }
+  label(`step ${lo} of ${FLOW_STEPS} — ${flowCut.count} communities at the cut modularity chose ` +
+        `(ℓ ≤ ${flowCut.cut.toFixed(2)}, Q = ${flowCut.q.toFixed(2)}); links past it fade`, HALF, H - 18);
+}
+
 /* ---------- the tabs ---------- */
 
 const CAPTIONS = [
@@ -650,6 +714,12 @@ const CAPTIONS = [
   "model's embedding of the note), the plane of the first two turned by Procrustes to face the link " +
   "layout. dashed: the strongest pairs that agree in meaning and never link. ρ and p are Mantel's " +
   "test — Spearman between hop distance and cosine distance, against two hundred relabelled skies.",
+
+  "discrete Ricci flow, played by the springs: each link's rest length is its flowed length — " +
+  "ℓ ← ℓ(1 − εκ), rescaled to mean one, twelve steps — so a bridge (warm) stretches and a weave " +
+  "(cool) tightens until the communities stand apart. the cut is not a number someone picked: " +
+  "of every distinct length above the mean, the one whose components score the highest " +
+  "modularity, and the stars wear the community it gives them.",
 ];
 
 let tab = 0;
@@ -664,12 +734,13 @@ function setTab(t: number): void {
   if (t === 4) beatDrawn = false;
   if (t === 5) curvatureDrawn = false;
   if (t === 6) meaningDrawn = false;
+  if (t === 7) flowBodies = [];      /* the flow starts over on every visit */
 }
 buttons.forEach((b, i) => b.addEventListener("click", () => setTab(i)));
 setTab(0);
 
 function frame(now: number): void {
-  if (tab >= 3) {
+  if (tab >= 3 && tab <= 6) {
     /* static: render once per visit (and once more when the fetch lands) */
     const drawn = tab === 3 ? terraDrawn : tab === 4 ? beatDrawn : tab === 5 ? curvatureDrawn : meaningDrawn;
     if (!drawn) {
@@ -685,7 +756,8 @@ function frame(now: number): void {
     ctx.fillRect(0, 0, W, H);
     if (tab === 0) drawSpectral();
     else if (tab === 1) drawHeat();
-    else drawKepler(now);
+    else if (tab === 2) drawKepler(now);
+    else drawFlow(now);
   }
   requestAnimationFrame(frame);
 }

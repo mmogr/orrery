@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateGraph, validateDays, validateRepoLangs, validateGhosts,
-         validateRepos, validateLangBytes, validateRecents, validateSemantic, okName }
+         validateRepos, validateLangBytes, validateRecents, validateSemantic, validateFlow, okName }
   from "../src/feeds/validate.ts";
 
 test("okName is GitHub's alphabet and nothing more", () => {
@@ -119,4 +119,18 @@ test("validateSemantic empties a feed with a bad dim and accepts the empty contr
     { dim: 1, notes: [{ html: "a.html", v: [1] }] });
   assert.equal(validateSemantic({ dim: 1, notes: Array.from({ length: 5 }, (_, i) => ({ html: `${i}.html`, v: [1] })) },
     { notes: 3, dim: 64 }).notes.length, 3);
+});
+
+test("validateFlow keeps links between known nodes with positive lengths and reads junk as zero", () => {
+  const f = validateFlow({
+    steps: 10, eps: 0.5, cut: 1.7, q: 0.45, clusters: 3, evil: 1,
+    nodes: ["a", "b", "c", 7, ""],
+    edges: [[0, 1, 1.2], [1, 2, 0.4], [0, 3, 1], [0, 0, 1], [2, 1, -1], [0, 1, NaN], [0, 1], "junk", null],
+  });
+  assert.deepEqual(f, { steps: 10, eps: 0.5, cut: 1.7, q: 0.45, clusters: 3, nodes: ["a", "b", "c"],
+                        edges: [[0, 1, 1.2], [1, 2, 0.4]] });
+  assert.deepEqual(validateFlow(null), { steps: 0, eps: 0, cut: 0, q: 0, clusters: 0, nodes: [], edges: [] });
+  assert.deepEqual(validateFlow({ steps: 2.5, eps: -1, cut: "x", q: 3, clusters: -2, nodes: [], edges: [] }),
+    { steps: 0, eps: 0, cut: 0, q: 0, clusters: 0, nodes: [], edges: [] });
+  assert.equal(validateFlow({ nodes: ["a", "b"], edges: [[0, 1, 1], [1, 0, 1], [0, 1, 2]] }, { nodes: 2, edges: 2 }).edges.length, 2);
 });

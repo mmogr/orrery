@@ -41,6 +41,9 @@ export const DEFAULT_FORCES: Forces = {
 
 export interface LayoutEnv {
   K: number;                                       /* the natural length scale */
+  /* per-link multipliers of the 0.8K rest length, indexed like edges —
+     the Ricci flow's lengths; absent, every link rests at 0.8K */
+  lengths?: ArrayLike<number>;
   window: { x: number; y: number; hw: number; hh: number };
   clearing: number;
   floorY: number;
@@ -89,12 +92,14 @@ export function stepLayout(
 
   /* springs: linear toward 0.8K, softened where a leaf meets a hub so the
      well-connected are not yanked about by every stray edge */
-  for (const [i, j] of edges) {
+  const lengths = env.lengths;
+  for (let e = 0; e < edges.length; e++) {
+    const [i, j] = edges[e];
     const a = bodies[i], b = bodies[j];
     const dx = b.x - a.x, dy = b.y - a.y;
     const d = Math.sqrt(dx * dx + dy * dy) + 0.01;
     const norm = Math.sqrt(1 + Math.min(a.deg, b.deg) / 3);
-    const fs = (d - K * 0.8) / d * F.spring * heat / norm;
+    const fs = (d - K * 0.8 * (lengths ? lengths[e] : 1)) / d * F.spring * heat / norm;
     ax[i] += dx * fs; ay[i] += dy * fs;
     ax[j] -= dx * fs; ay[j] -= dy * fs;
   }
