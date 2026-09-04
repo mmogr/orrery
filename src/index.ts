@@ -18,6 +18,8 @@ export * from "./sky/springs.ts";
 export * from "./sky/heat.ts";
 export * from "./sky/curvature.ts";
 export * from "./sky/hks.ts";
+export * from "./sky/paths.ts";
+export * from "./sky/semantic.ts";
 export * from "./orbits/kepler.ts";
 export * from "./orbits/arc.ts";
 export * from "./orbits/svd.ts";

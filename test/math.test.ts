@@ -1,10 +1,10 @@
 /* The maths core, held to its promises. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cholesky, solveChol, jacobiEigen, orthogonalise } from "../src/math/linalg.ts";
+import { cholesky, solveChol, jacobiEigen, orthogonalise, procrustes } from "../src/math/linalg.ts";
 import { gaussianKernel, convolveReflect } from "../src/math/kernels.ts";
 import { dft, dominantRhythm } from "../src/math/dft.ts";
-import { zscore, laggedCorrelation, entropyBits } from "../src/math/stats.ts";
+import { zscore, laggedCorrelation, entropyBits, ranks, spearman, mantel } from "../src/math/stats.ts";
 import { morletPeriod, morletScales, scalogram, ridge } from "../src/math/wavelet.ts";
 import { rng } from "../src/rng.ts";
 
@@ -171,4 +171,59 @@ test("morlet scales and periods agree with the textbook", () => {
   near(morletPeriod(s[0]), 2, 1e-12);
   near(morletPeriod(s[s.length - 1]), 26.5, 1e-12);
   for (let i = 1; i < s.length; i++) assert.ok(s[i] > s[i - 1]);
+});
+
+/* ---------------- ranks, Spearman, Mantel, Procrustes ---------------- */
+
+test("ranks average ties", () => {
+  assert.deepEqual(Array.from(ranks([10, 20, 20, 30])), [1, 2.5, 2.5, 4]);
+  assert.deepEqual(Array.from(ranks([3, 3, 3])), [2, 2, 2]);
+  assert.deepEqual(Array.from(ranks([])), []);
+});
+
+test("spearman is Pearson on ranks: the textbook pair", () => {
+  /* b's ranks are 1, 2, 3.5, 5, 3.5 against 1..5: ρ = 8/√95 */
+  near(spearman([1, 2, 3, 4, 5], [5, 6, 7, 8, 7]), 8 / Math.sqrt(95), 1e-12);
+  near(spearman([1, 2, 3], [3, 2, 1]), -1, 1e-12);
+  near(spearman([1, 1, 1], [1, 2, 3]), 0);
+});
+
+/* a random symmetric distance matrix, zero diagonal */
+function distances(n: number, seed: number): Float64Array {
+  const rnd = rng(seed), d = new Float64Array(n * n);
+  for (let i = 0; i < n; i++)
+    for (let j = i + 1; j < n; j++) d[i * n + j] = d[j * n + i] = 1 + rnd();
+  return d;
+}
+
+test("mantel: a matrix against itself is ρ = 1 at the smallest p; against a stranger, nothing", () => {
+  const n = 30, A = distances(n, 2), B = distances(n, 3);
+  const self = mantel(A, A, n, { permutations: 200, seed: 1 });
+  near(self.rho, 1, 1e-12);
+  near(self.p, 1 / 201, 1e-12);
+  const other = mantel(A, B, n, { permutations: 200, seed: 1 });
+  assert.ok(Math.abs(other.rho) < 0.15, `rho ${other.rho}`);
+  assert.ok(other.p > 0.05, `p ${other.p}`);
+  assert.deepEqual(mantel(A, B, n, { permutations: 200, seed: 1 }), other);
+  assert.deepEqual(mantel(A, A, 2), { rho: 0, p: 1 });
+  assert.deepEqual(mantel(new Float64Array(9), A, 3), { rho: 0, p: 1 });
+});
+
+test("procrustes undoes a rotation, a reflection and a shift", () => {
+  const n = 12, rnd = rng(6);
+  const dst = { x: new Float64Array(n), y: new Float64Array(n), z: new Float64Array(n) };
+  for (let i = 0; i < n; i++) { dst.x[i] = (rnd() - 0.5) * 10; dst.y[i] = (rnd() - 0.5) * 6; dst.z[i] = rnd(); }
+  const th = 0.7, c = Math.cos(th), s = Math.sin(th);
+  const src = { x: new Float64Array(n), y: new Float64Array(n), z: Float64Array.from(dst.z) };
+  for (let i = 0; i < n; i++) {
+    const x = -dst.x[i], y = dst.y[i];      /* reflect x, then turn, then shift */
+    src.x[i] = c * x - s * y + 3; src.y[i] = s * x + c * y - 2;
+  }
+  const out = procrustes(src, dst);
+  for (let i = 0; i < n; i++) { near(out.x[i], dst.x[i], 1e-9); near(out.y[i], dst.y[i], 1e-9); near(out.z[i], dst.z[i]); }
+  /* collinear points still get a proper rotation, not NaN */
+  const line = { x: new Float64Array([0, 1, 2]), y: new Float64Array([0, 0, 0]), z: new Float64Array(3) };
+  const up = { x: new Float64Array([0, 0, 0]), y: new Float64Array([0, 1, 2]), z: new Float64Array(3) };
+  const turned = procrustes(line, up);
+  for (let i = 0; i < 3; i++) { near(turned.x[i], up.x[i], 1e-9); near(turned.y[i], up.y[i], 1e-9); }
 });
