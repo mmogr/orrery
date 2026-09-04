@@ -45,7 +45,7 @@ the sentence cannot be written, it does not ship.
 ## Use
 
 ```sh
-npm install github:mmogr/orrery#semver:^0.1.0
+npm install @mmogr/orrery
 ```
 
 ```ts
@@ -68,5 +68,5 @@ package does adds a changeset (`npx changeset`, naming `patch`, `minor` or
 moves). A standing "Version Packages" pull request gathers the notes into
 `CHANGELOG.md` and the version; merging it is the release — the workflow
 tags `vX.Y.Z`, writes the GitHub release, and publishes to npm with
-provenance through trusted publishing. Consumers may pin either:
-`npm install @mmogr/orrery` or `github:mmogr/orrery#semver:^0.1.0`.
+provenance through trusted publishing. Every version on npm carries a provenance attestation naming the commit
+and the workflow run that built it.
