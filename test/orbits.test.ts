@@ -9,6 +9,7 @@ import type { Elements } from "../src/orbits/kepler.ts";
 import { arcPos } from "../src/orbits/arc.ts";
 import { svd, languageSpace } from "../src/orbits/svd.ts";
 import { findBinaries } from "../src/orbits/binaries.ts";
+import { benjaminiHochberg } from "../src/math/stats.ts";
 import { rng } from "../src/rng.ts";
 
 const near = (a: number, b: number, tol = 1e-9) =>
@@ -202,6 +203,46 @@ test("findBinaries: the planted pair, at its planted lag, and no double-booking"
   }
   /* the sparse twins never qualify */
   assert.ok(!pairs.some(p => p.a >= 6 || p.b >= 6), "sparse series must sit out");
-  /* independent noise alone pairs with nothing */
-  assert.deepEqual(findBinaries(noise), []);
+});
+
+/* ---------------- binaries: the false-discovery rate ---------------- */
+
+test("benjaminiHochberg gives the textbook q-values, monotone and in place", () => {
+  const q = benjaminiHochberg([0.01, 0.04, 0.03, 0.2]);
+  /* sorted 0.01, 0.03, 0.04, 0.2 with m = 4: raw 0.04, 0.06, 0.0533, 0.2;
+     the running minimum from the top pulls 0.06 down to 0.0533 */
+  assert.deepEqual([...q].map(v => +v.toFixed(12)), [0.04, 0.053333333333, 0.053333333333, 0.2]);
+  assert.deepEqual([...benjaminiHochberg([])], []);
+  assert.deepEqual([...benjaminiHochberg([0.5])], [0.5]);
+  for (const v of benjaminiHochberg([0.9, 0.95, 1])) assert.ok(v <= 1);
+});
+
+test("independent years pair with nothing, across seeds, at the stated rate or better", () => {
+  /* six repos of pure noise: fifteen pairs a roster, ten rosters — with
+     fdr 0.1 a handful of false pairs would be within its promise; the
+     permutation null does better than that here */
+  let found = 0;
+  for (let seed = 0; seed < 10; seed++) {
+    const r = rng(100 + seed);
+    const noise = Array.from({ length: 6 }, () =>
+      Array.from({ length: 365 }, () => (r() < 0.2 ? 1 + Math.floor(r() * 4) : 0)));
+    found += findBinaries(noise, { seed }).length;
+  }
+  assert.ok(found <= 3, `${found} false pairs across ten rosters`);
+});
+
+test("a planted pair is found at its lag with a q-value that says so", () => {
+  const r = rng(11);
+  const a = Array.from({ length: 365 }, () => (r() < 0.25 ? 1 + Math.floor(r() * 5) : 0));
+  const b = a.map((_, t) => (t >= 3 && r() < 0.8 ? a[t - 3] : (r() < 0.1 ? 1 : 0)));
+  const noise = Array.from({ length: 4 }, () =>
+    Array.from({ length: 365 }, () => (r() < 0.2 ? 1 + Math.floor(r() * 3) : 0)));
+  const pairs = findBinaries([a, b, ...noise]);
+  assert.equal(pairs.length, 1);
+  assert.equal(pairs[0].a, 0); assert.equal(pairs[0].b, 1);
+  assert.equal(pairs[0].lag, 3);
+  assert.ok(pairs[0].q < 0.05, `q = ${pairs[0].q}`);
+  assert.ok(pairs[0].p >= 1 / 1001, "no p below one over the draws plus one");
+  /* the same seed, the same answer */
+  assert.deepEqual(findBinaries([a, b, ...noise]), pairs);
 });
