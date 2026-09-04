@@ -134,6 +134,37 @@ test("depth: x and y are what they were before the third mode arrived", () => {
   for (let i = 0; i < 10; i++) { near(e.x[i], px[i], 1e-7); near(e.y[i], py[i], 1e-7); }
 });
 
+test("asking for depth leaves x and y as 0.1.1 drew them, degenerate components included", () => {
+  /* a 4-cycle, a path, K4, a lone star, a triangle and a 4×3 grid: cycles
+     and cliques have repeated eigenvalues, where the start vector picks
+     the eigenvector — so depth draws its starts from its own stream, and
+     these are the coordinates the two-vector release produced */
+  const edges: [number, number][] = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 8],
+    [9, 10], [9, 11], [9, 12], [10, 11], [10, 12], [11, 12], [14, 15], [15, 16], [16, 14]];
+  const at = (x: number, y: number) => 17 + x + 4 * y;
+  for (let x = 0; x < 4; x++) for (let y = 0; y < 3; y++) {
+    if (x < 3) edges.push([at(x, y), at(x + 1, y)]);
+    if (y < 2) edges.push([at(x, y), at(x, y + 1)]);
+  }
+  const e = spectralEmbedding({ n: 29, edges });
+  const px = [-1.1421539014, -1.1917159552, -0.7507985506, -0.7012364895, 0.9172732788, 0.8333876681,
+    0.6308698908, 0.4283521158, 0.3444665074, 1.7083100808, 1.5644329343, 1.2640847999, 1.1580331215,
+    2.1963737198, -1.4135630675, -1.7551279186, -1.9503683305, -0.4565820625, -0.3038433544,
+    -0.0529266242, 0.0998120829, -0.4793893809, -0.3141287587, -0.0426412253, 0.122619397,
+    -0.4565820669, -0.3038433598, -0.0529266295, 0.0998120785];
+  const py = [1.1317686123, -0.9030422969, -1.1317685928, 0.9030422774, 1.0573893564, -0.2643473382,
+    -1.5860840617, -0.264347349, 1.0573893925, 0.1537494431, -0.6229424168, 1.5894034685,
+    -1.1202104948, 0, -0.5202066445, 1.4302861891, -0.9100795446, -1.1267635759, -1.3692998979,
+    -1.3692998824, -1.1267635435, -2.36e-8, 4.5e-9, 1.6e-8, 2e-9, 1.126763536, 1.3692999039,
+    1.3692999098, 1.126763551];
+  for (let i = 0; i < 29; i++) { near(e.x[i], px[i], 1e-7); near(e.y[i], py[i], 1e-7); }
+  /* and the components big enough for a third mode have one */
+  let nonzero = 0;
+  for (let i = 0; i < 29; i++) if (Math.abs(e.z[i]) > 1e-9) nonzero++;
+  assert.ok(nonzero >= 20, `only ${nonzero} nodes have depth`);
+  for (let i = 14; i < 17; i++) near(e.z[i], 0, 1e-12);       /* the triangle sits on the plane */
+});
+
 test("depth on P8 is the third cosine mode: three sign changes, unit RMS", () => {
   const g: Graph = { n: 8, edges: Array.from({ length: 7 }, (_, i) => [i, i + 1] as const) };
   const e = spectralEmbedding(g);

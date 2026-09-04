@@ -24,12 +24,13 @@ const SHIFT = 1e-3;         /* lifts λ = 0 so the Cholesky factor exists */
 const TOL = 1e-8;
 const MAX_ITER = 200;
 const GOLDEN = 2.399963229728653;   /* the sunflower angle, for lone stars */
+const DEPTH_STREAM = 1e6;           /* the seed offset of depth's own start vectors */
 
 /* the smallest non-trivial eigenvectors of one component's L_sym, by
    shifted inverse iteration on the dense matrix (a component is at most a
    few hundred notes). Deflation keeps each iterate clear of the trivial
    D^{1/2}·1 direction and of vectors already found. */
-function componentEigens(sub: Graph, want: number, rnd: () => number): Float64Array[] {
+function componentEigens(sub: Graph, want: number, rnd: () => number, rndDepth: () => number): Float64Array[] {
   const n = sub.n;
   const L = normalisedLaplacian(sub);
   const A = new Float64Array(n * n);
@@ -47,8 +48,12 @@ function componentEigens(sub: Graph, want: number, rnd: () => number): Float64Ar
 
   const found: Float64Array[] = [];
   for (let e = 0; e < want; e++) {
+    /* the page's two modes start from the stream they always did; depth
+       draws from its own, so asking for it leaves x and y untouched on
+       every graph — a degenerate eigenvalue picks its vector by the start */
+    const draw = e < 2 ? rnd : rndDepth;
     let v: Float64Array = new Float64Array(n);
-    for (let i = 0; i < n; i++) v[i] = rnd() - 0.5;
+    for (let i = 0; i < n; i++) v[i] = draw() - 0.5;
     orthogonalise(v, [trivial, ...found]);
     normalise(v);
     for (let it = 0; it < MAX_ITER; it++) {
@@ -97,6 +102,7 @@ function centre(v: Float64Array): void {
 
 export function spectralEmbedding(g: Graph, seed?: number): Embedding {
   const rnd = rng(seed ?? 1);
+  const rndDepth = rng((seed ?? 1) + DEPTH_STREAM);
   const comp = components(g);
   let nc = 0;
   for (let i = 0; i < g.n; i++) nc = Math.max(nc, comp[i] + 1);
@@ -117,7 +123,7 @@ export function spectralEmbedding(g: Graph, seed?: number): Embedding {
     const size = members[c].length;
     const lx = new Float64Array(size), ly = new Float64Array(size), lz = new Float64Array(size);
     if (size > 1) {
-      const eig = componentEigens({ n: size, edges: subEdges[c] }, Math.min(3, size - 1), rnd);
+      const eig = componentEigens({ n: size, edges: subEdges[c] }, Math.min(3, size - 1), rnd, rndDepth);
       if (eig[0]) lx.set(eig[0]);
       if (eig[1]) ly.set(eig[1]);
       if (eig[2]) lz.set(eig[2]);
