@@ -63,8 +63,17 @@ them non-negative after the first augmentation), then push the bottleneck
 amount along the path to the nearest sink still wanting mass, undoing
 flow where the path runs backward. Each augmentation saturates a source, a
 sink, or a backward edge, so the loop is finite; with a dozen nodes a side
-it is microseconds. Costs come from a breadth-first walk of depth three
-from each support node.
+it is microseconds.
+
+Two things keep it that small on a real graph. The costs come from one
+table: a breadth-first walk from every node, once, capped at three hops,
+so a link reads its costs rather than walking for them. And the mass the
+two walks already agree on — $\min(m_i(u), m_j(u))$ at every $u$ — stays
+where it is: with a metric cost, moving overlapping mass away and
+replacing it can never beat leaving it, so only each side's surplus
+enters the transport. Inside a clique the neighbourhoods overlap almost
+entirely and the problem left is a few nodes a side; on the notes graph,
+seven hundred links take some thirty milliseconds.
 
 Entropic regularisation (Sinkhorn) was considered and set aside: with unit
 costs the bias it introduces, of order $\varepsilon \log(|S_i|\,|S_j|)$,
