@@ -61,3 +61,20 @@ export function entropyBits(weights: ArrayLike<number>): number {
   }
   return h;
 }
+
+/* Benjamini–Hochberg: q-values for a vector of p-values. Sort ascending,
+   scale the i-th by m/i, take the running minimum from the top so q is
+   monotone in p, clamp to one, and hand each back in its own slot. A
+   discovery at q ≤ α is one of a set whose expected false share is α. */
+export function benjaminiHochberg(p: ArrayLike<number>): Float64Array {
+  const m = p.length;
+  const order = Array.from({ length: m }, (_, i) => i).sort((a, b) => p[a] - p[b]);
+  const q = new Float64Array(m);
+  let running = 1;
+  for (let rank = m; rank >= 1; rank--) {
+    const i = order[rank - 1];
+    running = Math.min(running, p[i] * m / rank);
+    q[i] = running;
+  }
+  return q;
+}
