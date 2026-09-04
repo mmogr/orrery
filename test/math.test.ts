@@ -5,6 +5,7 @@ import { cholesky, solveChol, jacobiEigen, orthogonalise } from "../src/math/lin
 import { gaussianKernel, convolveReflect } from "../src/math/kernels.ts";
 import { dft, dominantRhythm } from "../src/math/dft.ts";
 import { zscore, laggedCorrelation, entropyBits } from "../src/math/stats.ts";
+import { morletPeriod, morletScales, scalogram, ridge } from "../src/math/wavelet.ts";
 import { rng } from "../src/rng.ts";
 
 const near = (a: number, b: number, tol = 1e-9) =>
@@ -105,4 +106,69 @@ test("zscore and entropy behave at the edges", () => {
   near(entropyBits([1, 1, 1, 1]), 2);
   near(entropyBits([1, 0, 0]), 0);
   near(entropyBits([]), 0);
+});
+
+/* ---------------- wavelet ---------------- */
+
+test("the ridge hears a planted 13-week rhythm wherever it is defined", () => {
+  const n = 53;
+  const x = Array.from({ length: n }, (_, t) => 10 + 4 * Math.sin((2 * Math.PI * t) / 13));
+  const scales = morletScales(n);
+  const { period, power } = ridge(scalogram(x, scales), scales, n);
+  let defined = 0;
+  for (let t = 0; t < n; t++) {
+    if (!(power[t] > 0)) continue;
+    defined++;
+    assert.ok(Math.abs(period[t] - 13) <= 0.5, `week ${t}: ${period[t]}`);
+  }
+  assert.ok(defined > 0);
+});
+
+test("the ridge of a chirp rises with it", () => {
+  const n = 106;
+  /* instantaneous period 6 → 20, linear in t; the phase is ∫ 2π / P(t) dt,
+     which for a linear P is a logarithm */
+  const x = Array.from({ length: n }, (_, t) =>
+    Math.sin(2 * Math.PI * ((n - 1) / 14) * Math.log((6 + (14 * t) / (n - 1)) / 6)));
+  const scales = morletScales(n);
+  const { period, power } = ridge(scalogram(x, scales), scales, n);
+  /* the middle half: clear of the cone's edges, where reflection folds
+     the ends back on themselves */
+  let prev = 0, seen = 0;
+  for (let t = n >> 2; t < 3 * (n >> 2); t++) {
+    if (!(power[t] > 0)) continue;
+    assert.ok(period[t] >= prev, `week ${t}: ${period[t]} < ${prev}`);
+    prev = period[t];
+    seen++;
+  }
+  assert.ok(seen > 20);
+});
+
+test("scalogram power is invariant to amplitude and level", () => {
+  /* the variance division cancels the gain: doubling the series is the
+     same beat, and so is lifting it by a constant */
+  const n = 53, r = rng(5);
+  const x = Array.from({ length: n }, (_, t) => 3 * Math.sin(t / 2) + r());
+  const scales = morletScales(n);
+  const a = scalogram(x, scales).power;
+  const b = scalogram(x.map(v => 2 * v + 7), scales).power;
+  assert.equal(a.length, b.length);
+  for (let i = 0; i < a.length; i++) near(a[i], b[i], 1e-9);
+});
+
+test("a flat series has no beat: all zeros, no NaN", () => {
+  const scales = morletScales(53);
+  const sg = scalogram(new Array(53).fill(4), scales);
+  assert.ok(sg.power.every(v => v === 0));
+  assert.ok(sg.coi.every(v => Number.isFinite(v)));
+  const r = ridge(sg, scales, 53);
+  assert.ok(r.period.every(v => v === 0) && r.power.every(v => v === 0));
+});
+
+test("morlet scales and periods agree with the textbook", () => {
+  near(morletPeriod(1), (4 * Math.PI) / (6 + Math.sqrt(38)), 1e-12);
+  const s = morletScales(53);
+  near(morletPeriod(s[0]), 2, 1e-12);
+  near(morletPeriod(s[s.length - 1]), 26.5, 1e-12);
+  for (let i = 1; i < s.length; i++) assert.ok(s[i] > s[i - 1]);
 });
