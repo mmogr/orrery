@@ -46,9 +46,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           v="$(node -p "require('./package.json').version")"
-          if ! npm view "@mmogr/orrery@$v" version >/dev/null 2>&1; then
-            echo "$v is not on npm yet; nothing to tag"; exit 0
-          fi
+          # a fresh publish takes the registry a moment to admit to
+          for i in 1 2 3 4 5 6; do
+            npm view "@mmogr/orrery@$v" version >/dev/null 2>&1 && break
+            [ "$i" = 6 ] && { echo "$v is not on npm yet; nothing to tag"; exit 0; }
+            sleep 10
+          done
           if gh release view "v$v" >/dev/null 2>&1; then
             echo "v$v is already released"; exit 0
           fi

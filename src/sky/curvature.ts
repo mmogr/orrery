@@ -91,39 +91,54 @@ export function ollivierRicci(g: Graph, opts?: Partial<CurvatureOpts>): Float64A
     if (a === b) continue;
     adj[a].push(b); adj[b].push(a);
   }
-  /* path lengths from u to every node within three hops — the farthest any
-     node of one support can be from any node of the other, since
-     u – i – j – v joins them — as a map; a depth-bounded breadth-first walk */
-  const seen = new Int32Array(n).fill(-1);
-  const hop = new Int32Array(n);
-  const reach = (u: number, want: Set<number>, out: Map<number, number>, stamp: number): void => {
-    const queue: number[] = [u];
-    seen[u] = stamp; hop[u] = 0;
-    for (let q = 0; q < queue.length; q++) {
-      const x = queue[q];
-      if (want.has(x)) out.set(x, hop[x]);
-      if (hop[x] === 3) continue;
-      for (const y of adj[x]) if (seen[y] !== stamp) { seen[y] = stamp; hop[y] = hop[x] + 1; queue.push(y); }
+  /* path lengths between every pair of nodes, capped at three hops — the
+     farthest any node of one support can be from any node of the other,
+     since u – i – j – v joins them. One breadth-first walk per node, once,
+     so each link reads its costs from a table instead of walking again */
+  const FAR = 255;
+  const hops = new Uint8Array(n * n).fill(FAR);
+  const queue = new Int32Array(n);
+  for (let u = 0; u < n; u++) {
+    const row = u * n;
+    hops[row + u] = 0;
+    let head = 0, tail = 0;
+    queue[tail++] = u;
+    while (head < tail) {
+      const x = queue[head++];
+      const h = hops[row + x];
+      if (h === 3) continue;
+      for (const y of adj[x]) if (hops[row + y] === FAR) { hops[row + y] = h + 1; queue[tail++] = y; }
     }
-  };
+  }
   const out = new Float64Array(g.edges.length);
-  let stamp = 0;
+  const massA = new Float64Array(n), massB = new Float64Array(n);
   g.edges.forEach(([i, j], e) => {
     if (i === j) return;
-    const Si = [i, ...adj[i]], Sj = [j, ...adj[j]];
-    const a = new Float64Array(Si.length), b = new Float64Array(Sj.length);
-    a[0] = alpha; b[0] = alpha;
-    for (let k = 1; k < Si.length; k++) a[k] = (1 - alpha) / adj[i].length;
-    for (let k = 1; k < Sj.length; k++) b[k] = (1 - alpha) / adj[j].length;
-    const want = new Set(Sj);
-    const C = new Float64Array(Si.length * Sj.length);
-    const d = new Map<number, number>();
-    for (let p = 0; p < Si.length; p++) {
-      d.clear();
-      reach(Si[p], want, d, ++stamp);
-      for (let q = 0; q < Sj.length; q++) C[p * Sj.length + q] = d.get(Sj[q])!;
+    /* the two walks; then whatever mass the two already agree on stays
+       where it is — with a metric cost that is never worse than moving
+       it — and only each side's surplus has to travel. Neighbourhoods
+       inside a clique overlap almost entirely, so the problem that is
+       left is a few nodes a side */
+    massA[i] += alpha; massB[j] += alpha;
+    for (const k of adj[i]) massA[k] += (1 - alpha) / adj[i].length;
+    for (const k of adj[j]) massB[k] += (1 - alpha) / adj[j].length;
+    const Si: number[] = [], Sj: number[] = [], av: number[] = [], bv: number[] = [];
+    let total = 0;
+    for (const u of [i, ...adj[i], j, ...adj[j]]) {
+      if (massA[u] === 0 && massB[u] === 0) continue;
+      const keep = Math.min(massA[u], massB[u]);
+      const ra = massA[u] - keep, rb = massB[u] - keep;
+      if (ra > EPS) { Si.push(u); av.push(ra); total += ra; }
+      if (rb > EPS) { Sj.push(u); bv.push(rb); }
+      massA[u] = 0; massB[u] = 0;
     }
-    out[e] = 1 - transportCost(a, b, C);
+    if (!Si.length || !Sj.length) { out[e] = 1; return; }   /* the same walk twice: nothing moves */
+    /* the surplus on each side is a distribution of mass `total` */
+    const a = Float64Array.from(av, v => v / total), b = Float64Array.from(bv, v => v / total);
+    const C = new Float64Array(Si.length * Sj.length);
+    for (let p = 0; p < Si.length; p++)
+      for (let q = 0; q < Sj.length; q++) C[p * Sj.length + q] = hops[Si[p] * n + Sj[q]];
+    out[e] = 1 - total * transportCost(a, b, C);
   });
   return out;
 }
