@@ -122,6 +122,70 @@ test("scaleToBox respects the box and preserves aspect", () => {
   assert.ok(mx >= 150 - 1e-9 || my >= 60 - 1e-9, "should touch the tighter wall");
 });
 
+test("depth: x and y are what they were before the third mode arrived", () => {
+  /* pinned from the two-vector embedding; the third mode is found after
+     the first two, deflated against them, so it cannot touch them */
+  const p10: Graph = { n: 10, edges: Array.from({ length: 9 }, (_, i) => [i, i + 1] as const) };
+  const e = spectralEmbedding(p10);
+  const px = [1.348399726557, 1.26708127259, 1.032934116517, 0.674199861376, 0.234147153116,
+              -0.234147156884, -0.67419986355, -1.03293411625, -1.267081270176, -1.348399723296];
+  const py = [1.224744877476, 0.906371686492, 0.10022247007, -0.816496589755, -1.414842454419,
+              -1.414842445871, -0.816496572101, 0.100222480784, 0.906371682016, 1.224744865308];
+  for (let i = 0; i < 10; i++) { near(e.x[i], px[i], 1e-7); near(e.y[i], py[i], 1e-7); }
+});
+
+test("depth on P8 is the third cosine mode: three sign changes, unit RMS", () => {
+  const g: Graph = { n: 8, edges: Array.from({ length: 7 }, (_, i) => [i, i + 1] as const) };
+  const e = spectralEmbedding(g);
+  let changes = 0;
+  for (let i = 1; i < 8; i++) if (Math.sign(e.z[i]) !== Math.sign(e.z[i - 1])) changes++;
+  assert.equal(changes, 3);
+  /* antisymmetric about the middle, like cos(3π(i+½)/8) */
+  for (let i = 0; i < 4; i++) near(e.z[i], -e.z[7 - i], 1e-6);
+  let s = 0;
+  for (const v of e.z) s += v * v;
+  near(Math.sqrt(s / 8), 1, 1e-9);
+});
+
+test("a 3×3×3 grid yields three modes, mutually orthogonal in the degree-weighted norm", () => {
+  const at = (x: number, y: number, z: number) => x + 3 * y + 9 * z;
+  const edges: [number, number][] = [];
+  for (let x = 0; x < 3; x++) for (let y = 0; y < 3; y++) for (let z = 0; z < 3; z++) {
+    if (x < 2) edges.push([at(x, y, z), at(x + 1, y, z)]);
+    if (y < 2) edges.push([at(x, y, z), at(x, y + 1, z)]);
+    if (z < 2) edges.push([at(x, y, z), at(x, y, z + 1)]);
+  }
+  const g: Graph = { n: 27, edges };
+  const e = spectralEmbedding(g);
+  const deg = new Float64Array(27);
+  for (const [a, b] of edges) { deg[a]++; deg[b]++; }
+  /* u = D^{-1/2} v with v ⟂ in the plain norm, so u's are D-orthogonal;
+     the whole-sky centring cannot disturb that on a single component,
+     and D^{1/2}·1 ⟂ v means Σ d_i u_i = 0 */
+  const dot = (a: Float64Array, b: Float64Array) => {
+    let s = 0;
+    for (let i = 0; i < 27; i++) s += deg[i] * a[i] * b[i];
+    return s / 27;
+  };
+  const wsum = (a: Float64Array) => { let s = 0; for (let i = 0; i < 27; i++) s += deg[i] * a[i]; return s; };
+  near(dot(e.x, e.y), 0, 1e-6); near(dot(e.x, e.z), 0, 1e-6); near(dot(e.y, e.z), 0, 1e-6);
+  near(wsum(e.x), 0, 1e-6); near(wsum(e.y), 0, 1e-6); near(wsum(e.z), 0, 1e-6);
+  for (const v of [e.x, e.y, e.z]) {
+    let s = 0;
+    for (const t of v) s += t * t;
+    near(Math.sqrt(s / 27), 1, 1e-9);
+  }
+});
+
+test("depth is zero where a component cannot have a third mode", () => {
+  /* a triangle (three notes: two modes at most), an edge, and two lone stars */
+  const g: Graph = { n: 7, edges: [[0, 1], [1, 2], [2, 0], [3, 4]] };
+  const e = spectralEmbedding(g);
+  for (let i = 0; i < 7; i++) near(e.z[i], 0, 1e-12);
+  const s = scaleToBox(e, 100, 100);
+  for (let i = 0; i < 7; i++) near(s.z[i], 0, 1e-12);
+});
+
 /* ---------------- springs ---------------- */
 
 const quietForces = (over: Partial<Forces> = {}): Forces => ({
@@ -144,6 +208,7 @@ const body = (x: number, y: number): Body =>
 const restOf = (bs: Body[]): Embedding => ({
   x: Float64Array.from(bs, b => b.x),
   y: Float64Array.from(bs, b => b.y),
+  z: new Float64Array(bs.length),
 });
 
 test("a 2-body spring contracts toward its rest length", () => {
@@ -200,7 +265,7 @@ test("outsideMean is 0 with every body inside the window, positive outside", () 
 
 test("restPull draws a displaced body home", () => {
   const bodies = [body(20, -10)];
-  const rest: Embedding = { x: new Float64Array([0]), y: new Float64Array([0]) };
+  const rest: Embedding = { x: new Float64Array([0]), y: new Float64Array([0]), z: new Float64Array([0]) };
   const f = quietForces({ spring: 0, restPull: DEFAULT_FORCES.restPull });
   for (let i = 0; i < 2000; i++) stepLayout(bodies, [], rest, wideEnv(), 1, f);
   assert.ok(Math.hypot(bodies[0].x, bodies[0].y) < 1, "restPull should bring it home");

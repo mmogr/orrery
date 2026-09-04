@@ -42,7 +42,7 @@ a bridge it is nearly constant on each clique, with opposite signs. Used as
 an $x$-coordinate it spreads the graph along its longest intrinsic axis.
 The next eigenvector, orthogonal to both, is the second-smoothest mode and
 becomes $y$. Two coordinates, two smallest non-trivial eigenvectors: that
-is the whole embedding.
+is the page. The third is depth (below).
 
 One refinement: the eigenvector $v$ of $L_{\mathrm{sym}}$ lives in
 $D^{1/2}$-weighted space. The coordinates we plot are $u = D^{-1/2} v$,
@@ -71,6 +71,30 @@ eigenvalue at ratio $(\lambda_2 + \sigma)/(\lambda_3 + \sigma)$ per step;
 with deflation applied every iteration the found subspace cannot leak back
 in. The sign of each finished vector is pinned (largest-magnitude entry
 positive) so the same graph always faces the same way.
+
+## A third coordinate: depth
+
+The next eigenvector, $v_4$ of $L_{\mathrm{sym}}$ (the third non-trivial
+one), is orthogonal to the two on the page and is the third-smoothest
+function on the graph. Used as $z$, it is depth. It costs one more pass of
+the same inverse iteration, deflated against the three vectors already
+found, so $x$ and $y$ are exactly what they were without it.
+
+What it means: where $v_2$ has already cut the graph into its two broadest
+halves and $v_3$ into the next pair, $v_4$'s sign changes run *across*
+those cuts. On a path it is the cosine with three nodes,
+$\cos\!\big(3\pi (i + \tfrac12) / n\big)$; on a $3 \times 3 \times 3$
+grid it is the third axis the other two left out. On a notes graph a
+concept that bridges two courses sits near $z = 0$ — it belongs to both
+cuts equally — while a note deep inside one course lies at an extreme.
+So a nearer star, in the parallax a consumer draws from $z$, is a bridge.
+
+A component with fewer than four notes has no third mode (a triangle has
+two non-trivial eigenvectors, an edge one, a lone star none) and gets
+$z = 0$: it sits on the page's plane. Depth is centred and scaled to unit
+RMS like the other axes, is not packed (packing is a fact about $x$), and
+`scaleToBox` gives it the same factor as $x$ and $y$ so it stays in the
+page's units.
 
 ## Assembling the whole sky
 
@@ -109,7 +133,10 @@ and its alternating right–left order (any deterministic packing would do;
 this one keeps the biggest constellation where the eye rests); the
 **lone-star ring** radius and its golden-angle stepping, which exist so
 isolated notes read as a scattering rather than a stack; and the choice of
-**two** eigenvectors — the sky is a plane because the page is. The
+**three** eigenvectors — two for the plane of the page, one for depth,
+because that is what a page with a moving camera can show. How far the
+depth is let move the picture (the parallax gain) is the consumer's
+aesthetic term, not this document's. The
 `restPull` force in docs/springs.md is the only consumer of this rest
 state; its strength there, not anything here, decides how literally the
 sky obeys the spectrum.

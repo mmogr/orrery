@@ -1,9 +1,11 @@
 /* The sky's shape from the links alone: a spectral embedding. Per connected
-   component, the two smallest non-trivial eigenvectors of L_sym place the
-   notes so that what is taught together sits together — a rest state the
-   springs then breathe on. Deterministic: inverse iteration from a seeded
-   start, deflating the trivial vector D^{1/2}·1 and each found vector.
-   Components pack left-to-right by size along x. See docs/spectral-sky.md. */
+   component, the three smallest non-trivial eigenvectors of L_sym place the
+   notes so that what is taught together sits together — x and y on the
+   page, z as depth — a rest state the springs then breathe on.
+   Deterministic: inverse iteration from a seeded start, deflating the
+   trivial vector D^{1/2}·1 and each found vector. Components pack
+   left-to-right by size along x; depth is not packed. See
+   docs/spectral-sky.md. */
 import type { Graph } from "./laplacian.ts";
 import { normalisedLaplacian, components } from "./laplacian.ts";
 import { cholesky, solveChol, orthogonalise } from "../math/linalg.ts";
@@ -13,6 +15,9 @@ export interface Embedding {
   /* centred, unit-RMS per axis before scaleToBox */
   x: Float64Array;
   y: Float64Array;
+  /* depth: the third mode, same units; zero where a component is too
+     small to have one (fewer than four notes) */
+  z: Float64Array;
 }
 
 const SHIFT = 1e-3;         /* lifts λ = 0 so the Cholesky factor exists */
@@ -20,7 +25,7 @@ const TOL = 1e-8;
 const MAX_ITER = 200;
 const GOLDEN = 2.399963229728653;   /* the sunflower angle, for lone stars */
 
-/* the two smallest non-trivial eigenvectors of one component's L_sym, by
+/* the smallest non-trivial eigenvectors of one component's L_sym, by
    shifted inverse iteration on the dense matrix (a component is at most a
    few hundred notes). Deflation keeps each iterate clear of the trivial
    D^{1/2}·1 direction and of vectors already found. */
@@ -107,19 +112,20 @@ export function spectralEmbedding(g: Graph, seed?: number): Embedding {
   /* per-component coordinates, centred, then lifted to unit per-axis RMS
      (an eigenvector is unit-norm, so ·√size does it) so components of
      different sizes speak the same units when we pack them */
-  const cx: Float64Array[] = [], cy: Float64Array[] = [];
+  const cx: Float64Array[] = [], cy: Float64Array[] = [], cz: Float64Array[] = [];
   for (let c = 0; c < nc; c++) {
     const size = members[c].length;
-    const lx = new Float64Array(size), ly = new Float64Array(size);
+    const lx = new Float64Array(size), ly = new Float64Array(size), lz = new Float64Array(size);
     if (size > 1) {
-      const eig = componentEigens({ n: size, edges: subEdges[c] }, Math.min(2, size - 1), rnd);
+      const eig = componentEigens({ n: size, edges: subEdges[c] }, Math.min(3, size - 1), rnd);
       if (eig[0]) lx.set(eig[0]);
       if (eig[1]) ly.set(eig[1]);
-      centre(lx); centre(ly);
+      if (eig[2]) lz.set(eig[2]);
+      centre(lx); centre(ly); centre(lz);
       const s = Math.sqrt(size);
-      for (let i = 0; i < size; i++) { lx[i] *= s; ly[i] *= s; }
+      for (let i = 0; i < size; i++) { lx[i] *= s; ly[i] *= s; lz[i] *= s; }
     }
-    cx.push(lx); cy.push(ly);
+    cx.push(lx); cy.push(ly); cz.push(lz);
   }
 
   /* pack along x by size: the largest constellation holds the centre and the
@@ -130,7 +136,7 @@ export function spectralEmbedding(g: Graph, seed?: number): Embedding {
     .sort((a, b) => members[b].length - members[a].length || a - b);
   const MARGIN = 1, RING = 0.6;
   let right = 0, left = 0, lone = 0;
-  const x = new Float64Array(g.n), y = new Float64Array(g.n);
+  const x = new Float64Array(g.n), y = new Float64Array(g.n), z = new Float64Array(g.n);
   order.forEach((c, rank) => {
     const size = members[c].length;
     if (size === 1) {
@@ -147,21 +153,24 @@ export function spectralEmbedding(g: Graph, seed?: number): Embedding {
     for (let i = 0; i < size; i++) {
       x[members[c][i]] = cx[c][i] + at;
       y[members[c][i]] = cy[c][i];
+      z[members[c][i]] = cz[c][i];
     }
   });
 
-  /* the whole sky in standard units: centred, unit RMS per axis */
-  for (const v of [x, y]) {
+  /* the whole sky in standard units: centred, unit RMS per axis (a depth
+     axis that is all zeros — every component too small — stays zero) */
+  for (const v of [x, y, z]) {
     centre(v);
     let s = 0;
     for (let i = 0; i < v.length; i++) s += v[i] * v[i];
     const rms = Math.sqrt(s / (v.length || 1));
     if (rms > 1e-12) for (let i = 0; i < v.length; i++) v[i] /= rms;
   }
-  return { x, y };
+  return { x, y, z };
 }
 
-/* scale an embedding into a w×h box about the origin, preserving aspect */
+/* scale an embedding into a w×h box about the origin, preserving aspect;
+   depth takes the same factor, so it stays in the page's units */
 export function scaleToBox(e: Embedding, w: number, h: number): Embedding {
   let mx = 0, my = 0;
   for (let i = 0; i < e.x.length; i++) {
@@ -175,5 +184,6 @@ export function scaleToBox(e: Embedding, w: number, h: number): Embedding {
   return {
     x: Float64Array.from(e.x, v => v * k),
     y: Float64Array.from(e.y, v => v * k),
+    z: Float64Array.from(e.z, v => v * k),
   };
 }
