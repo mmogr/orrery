@@ -15,7 +15,7 @@ that page, extracted because a model worth deriving is worth reading.
 
 | module | what it is |
 |---|---|
-| `sky/spectral` | rest positions for a notes graph from the two smallest non-trivial eigenvectors of its normalised Laplacian — what is taught together sits together |
+| `sky/spectral` | rest positions for a notes graph from the three smallest non-trivial eigenvectors of its normalised Laplacian — what is taught together sits together, and the third mode is depth |
 | `sky/springs` | a velocity-Verlet layer over the rest state: springs breathe, hands deform, the shape comes home |
 | `sky/heat` | the heat equation on the graph — open a note and warmth diffuses along its links |
 | `orbits/kepler` | activity → semi-major axis → period by $T^2 \propto a^3$; position by solving Kepler's equation, not by lookup |

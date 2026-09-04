@@ -69,6 +69,7 @@ function placed(e: Embedding, w: number, h: number, cx: number, cy: number): Emb
   return {
     x: Float64Array.from(s.x, v => v + cx),
     y: Float64Array.from(s.y, v => v + cy),
+    z: s.z,
   };
 }
 
