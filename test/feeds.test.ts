@@ -3,7 +3,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateGraph, validateDays, validateRepoLangs, validateGhosts,
-         validateRepos, validateLangBytes, validateRecents, validateSemantic, validateFlow, okName }
+         validateRepos, validateLangBytes, validateRecents, validateSemantic, validateFlow,
+         validateExcerpts, validateTextIndexManifest, validateTextShard, okName }
   from "../src/feeds/validate.ts";
 
 test("okName is GitHub's alphabet and nothing more", () => {
@@ -144,4 +145,75 @@ test("validateFlow's parted is optional, whole, and never more than the count", 
   assert.equal(validateFlow({ ...base, parted: -1 }).parted, undefined);
   assert.equal(validateFlow({ ...base, parted: 1.5 }).parted, undefined);
   assert.equal(validateFlow({ ...base, parted: "2" }).parted, undefined);
+});
+
+test("validateExcerpts trims, caps, dedupes and drops the wordless", () => {
+  const e = validateExcerpts({
+    v: 1, evil: 1,
+    notes: [
+      { html: "a.html", ex: "  the first line  " },
+      { html: "a.html", ex: "a second try" },        /* the first html wins */
+      { html: "b.html", ex: "x".repeat(400) },
+      { html: "c.html", ex: "   " },                 /* nothing to say */
+      { html: "d.html", ex: 7 },
+      { html: "", ex: "no key" },
+      { html: "e".repeat(400), ex: "too long a key" },
+      null, "junk", { ex: "no html" },
+    ],
+  });
+  assert.deepEqual(e.notes.map(n => n.html), ["a.html", "b.html"]);
+  assert.equal(e.notes[0].ex, "the first line");
+  assert.equal(e.notes[1].ex.length, 200);
+  assert.equal(e.v, 1);
+  /* the empty contract, for a notes site that has not published one yet */
+  assert.deepEqual(validateExcerpts(null), { v: 1, notes: [] });
+  assert.deepEqual(validateExcerpts("junk"), { v: 1, notes: [] });
+  assert.equal(validateExcerpts({ notes: Array.from({ length: 3000 },
+    (_, i) => ({ html: `n${i}.html`, ex: "x" })) }).notes.length, 2000);
+});
+
+test("validateTextIndexManifest takes n bare file names or nothing at all", () => {
+  const names = Array.from({ length: 4 }, (_, i) => `${"0123456789abcdef".slice(i)}${"0".repeat(i)}0000.json`);
+  const ok = validateTextIndexManifest({ v: 1, n: 4, shards: names, ids: ["a.html", "b.html"], evil: 1 });
+  assert.deepEqual(ok, { v: 1, n: 4, shards: names, ids: ["a.html", "b.html"] });
+  const empty = { v: 1, n: 0, shards: [], ids: [] };
+  /* the count and the list must agree */
+  assert.deepEqual(validateTextIndexManifest({ n: 4, shards: names.slice(0, 3), ids: ["a"] }), empty);
+  assert.deepEqual(validateTextIndexManifest({ n: 200, shards: names, ids: ["a"] }), empty);
+  assert.deepEqual(validateTextIndexManifest({ n: 0, shards: [], ids: ["a"] }), empty);
+  /* a name is a name, not a path: it becomes a URL */
+  assert.deepEqual(validateTextIndexManifest(
+    { n: 1, shards: ["../../etc/passwd.json"], ids: ["a"] }), empty);
+  assert.deepEqual(validateTextIndexManifest({ n: 1, shards: ["a/b0000000.json"], ids: ["a"] }), empty);
+  assert.deepEqual(validateTextIndexManifest({ n: 1, shards: ["deadbeef.txt"], ids: ["a"] }), empty);
+  assert.deepEqual(validateTextIndexManifest({ n: 1, shards: ["DEADBEEF.json"], ids: ["a"] }), empty);
+  assert.deepEqual(validateTextIndexManifest({ n: 1, shards: ["deadbeef.json"], ids: [] }), empty);
+  assert.deepEqual(validateTextIndexManifest(null), empty);
+  assert.equal(validateTextIndexManifest({ n: 1, shards: ["deadbeef.json"],
+    ids: Array.from({ length: 3000 }, (_, i) => `n${i}.html`) }).ids.length, 2000);
+});
+
+test("validateTextShard keeps whole ids in range, deduped, and inherits nothing", () => {
+  const s = validateTextShard({
+    stack: [2, 0, 2, 1],
+    recursion: [0],
+    ghost: [9, -1, 1.5, "x"],           /* every posting out of range: dropped */
+    "": [0],
+    ["x".repeat(80)]: [0],
+    kepler: "not a list",
+  }, 3);
+  assert.deepEqual(s.stack, [0, 1, 2]);
+  assert.deepEqual(s.recursion, [0]);
+  assert.ok(!("ghost" in s) && !("kepler" in s) && !("" in s));
+  /* a shard is read by key, so it must answer only for its own keys */
+  assert.equal(Object.getPrototypeOf(s), null);
+  assert.equal((s as any).constructor, undefined);
+  assert.equal((s as any).__proto__, undefined);
+  const evil = validateTextShard(JSON.parse('{"__proto__": [0], "toString": [0]}'), 1);
+  assert.deepEqual(evil.toString as unknown, [0]);        /* an own key, harmlessly */
+  assert.equal(({} as any).polluted, undefined);
+  assert.deepEqual(Object.keys(validateTextShard(null, 3)), []);
+  assert.deepEqual(Object.keys(validateTextShard([1, 2], 3)), []);
+  assert.equal(Object.keys(validateTextShard(
+    Object.fromEntries(Array.from({ length: 6000 }, (_, i) => [`t${i}`, [0]])), 1)).length, 5000);
 });

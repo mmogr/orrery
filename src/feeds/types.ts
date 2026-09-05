@@ -84,3 +84,28 @@ export interface FlowFeed {
   nodes: string[];                            /* note ids, once */
   edges: Array<[number, number, number]>;     /* [i, j, length] */
 }
+
+/* the excerpts feed: a note's opening prose, one line, keyed on the same
+   html path the graph feed emits so the two join without a lookup table */
+export interface Excerpt {
+  html: string;
+  ex: string;
+}
+
+export interface ExcerptsFeed {
+  v: number;
+  notes: Excerpt[];
+}
+
+/* the text index: a manifest naming the shards and the note ids their
+   postings point into, and a shard mapping a term to those ids. The
+   consumer hashes a query term to a shard, fetches that one file, and
+   never sees the rest of the index. */
+export interface TextIndexManifest {
+  v: number;
+  n: number;                                  /* shards, and the modulus of the hash */
+  shards: string[];                           /* file names, in shard order; repeats allowed */
+  ids: string[];                              /* html paths a posting indexes into */
+}
+
+export type TextShard = Record<string, number[]>;
