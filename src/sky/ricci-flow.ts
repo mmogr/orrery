@@ -18,7 +18,7 @@ export interface FlowOpts {
   ceil: number;    /* and the longest */
 }
 
-export const FLOW_DEFAULTS: FlowOpts = { alpha: 0.5, step: 0.5, floor: 0.1, ceil: 4 };
+export const FLOW_DEFAULTS: FlowOpts = { alpha: 0.5, step: 0.5, floor: 0.1, ceil: 16 };
 export const FLOW_CUT_CANDIDATES = 64;   /* at most this many cuts are tried */
 
 /* one step: κ on the current metric, then ℓ ← ℓ (1 − ε κ), clamped, and
@@ -70,9 +70,14 @@ export function modularity(g: Graph, label: ArrayLike<number>): number {
    cut and take the components. With no cut given, try every distinct
    length above the mean (thinned to FLOW_CUT_CANDIDATES quantiles) and
    keep the cut whose components score the highest modularity — the
-   smallest such cut on a tie. Lengths all equal: one community, Q = 0. */
+   smallest such cut on a tie. Lengths all equal: one community, Q = 0.
+
+   `parted` is how many of those communities the cut itself made: the count
+   less the graph's own components, which were already apart before a single
+   link was removed. A sky that arrives in three pieces and leaves in seven
+   was parted four times, and that — not the seven — is what the flow did. */
 export function cutCommunities(g: Graph, lengths: ArrayLike<number>, cut?: number):
-  { count: number; label: Int32Array; cut: number; q: number } {
+  { count: number; label: Int32Array; cut: number; q: number; parted: number } {
   const m = lengths.length;
   let candidates: number[];
   if (cut != null) candidates = [cut];
@@ -94,8 +99,10 @@ export function cutCommunities(g: Graph, lengths: ArrayLike<number>, cut?: numbe
       candidates = thinned.map(c => c * (1 - 1e-9));
     }
   }
-  let best: { count: number; label: Int32Array; cut: number; q: number } =
-    { count: 1, label: new Int32Array(g.n), cut: candidates[0], q: -Infinity };
+  let whole = 0;
+  for (const l of components(g)) whole = Math.max(whole, l + 1);
+  let best: { count: number; label: Int32Array; cut: number; q: number; parted: number } =
+    { count: 1, label: new Int32Array(g.n), cut: candidates[0], q: -Infinity, parted: 0 };
   for (const c of candidates) {
     const sub: Graph = { n: g.n, edges: g.edges.filter((_, e) => lengths[e] <= c) };
     const label = components(sub);
@@ -103,7 +110,7 @@ export function cutCommunities(g: Graph, lengths: ArrayLike<number>, cut?: numbe
     if (q > best.q) {
       let count = 0;
       for (const l of label) count = Math.max(count, l + 1);
-      best = { count, label, cut: c, q };
+      best = { count, label, cut: c, q, parted: Math.max(0, count - whole) };
     }
   }
   return best;

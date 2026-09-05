@@ -84,9 +84,28 @@ test("ten steps part the barbell in two, at the cut modularity chooses", () => {
   /* two communities of ten inner links, degree sum 21 each, m = 21 */
   near(cut.q, 2 * (10 / 21 - 0.25), 1e-12);
   assert.ok(cut.cut < lengths[20] && cut.cut > 1);
+  assert.equal(cut.parted, 1);            /* one connected sky, cut once */
   /* a cut given by hand is honoured */
   assert.equal(cutCommunities(g, lengths, 100).count, 1);
   assert.deepEqual(ricciFlow(g, 10), ricciFlow(g, 10));
+});
+
+test("parted counts the cuts, not the pieces: a sky already in two parts", () => {
+  /* two barbells side by side: four communities out, but the flow only
+     made two of them — the other two were apart before it started */
+  const one = barbell(), two = barbell();
+  const g: Graph = {
+    n: one.n + two.n,
+    edges: [...one.edges, ...two.edges.map(([a, b]) => [a + one.n, b + one.n] as [number, number])],
+  };
+  const { lengths } = ricciFlow(g, 10);
+  const cut = cutCommunities(g, lengths);
+  assert.equal(cut.count, 4);
+  assert.equal(cut.parted, 2);
+  /* and a sky the cut leaves whole was parted none */
+  const k7: Graph = { n: 7, edges: [] };
+  clique(0, 7, k7.edges as [number, number][]);
+  assert.equal(cutCommunities(k7, ricciFlow(k7, 5).lengths).parted, 0);
 });
 
 test("modularity: one community is 0, a clique split in two is negative, the barbell's parting is 19/42", () => {

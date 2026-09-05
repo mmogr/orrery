@@ -80,6 +80,7 @@ export interface FlowFeed {
   cut: number;
   q: number;
   clusters: number;
+  parted?: number;                            /* of those, how many the cut made */
   nodes: string[];                            /* note ids, once */
   edges: Array<[number, number, number]>;     /* [i, j, length] */
 }

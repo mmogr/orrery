@@ -147,6 +147,12 @@ export function validateFlow(d: unknown, caps = { nodes: 2000, edges: 8000 }): F
   const whole = (v: unknown): number => (Number.isInteger(v) && (v as number) >= 0 ? v as number : 0);
   const pos = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
   const q = typeof raw.q === "number" && raw.q >= -1 && raw.q <= 1 ? raw.q : 0;
-  return { steps: whole(raw.steps), eps: pos(raw.eps), cut: pos(raw.cut), q,
-           clusters: whole(raw.clusters), nodes, edges };
+  const clusters = whole(raw.clusters);
+  const out: FlowFeed = { steps: whole(raw.steps), eps: pos(raw.eps), cut: pos(raw.cut), q,
+                          clusters, nodes, edges };
+  /* optional, and never more than the communities it is counted among: an
+     older bake has no `parted` and the consumer falls back to the count */
+  if (Number.isInteger(raw.parted) && raw.parted >= 0 && raw.parted <= clusters)
+    out.parted = raw.parted;
+  return out;
 }

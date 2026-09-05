@@ -80,13 +80,40 @@ Modularity moves only when the communities do, so the count reads the
 graph and not the week. A graph whose lengths are all equal has no
 candidate above the mean and is one community.
 
+### How many the cut made
+
+The count is how many pieces the sky is in; it is not how many the flow
+put it in. A notes graph usually arrives with a few components already —
+a course nobody has linked out of yet, a stray pair — and the cut inherits
+every one of them without doing anything. So `cutCommunities` also returns
+
+$$\text{parted} = \text{count} - c(G),$$
+
+$c(G)$ the components of the whole graph, before a single link is removed
+(clamped at zero, since a cut can only ever add components). Two barbells
+side by side flow to four communities and a `parted` of two: two seams cut,
+two pieces that were never joined. A consumer with a sentence to say about
+what the flow *did* should say this number.
+
+## The ceiling
+
+The ceiling exists so a runaway bridge cannot leave the drawing, and it
+binds before the rescaling, which means it also has to leave room for the
+flow's own answer. At $\varepsilon = \tfrac12$ and ten steps a bridge in a
+real notes graph reaches four in half a dozen steps and then sits there,
+pinned — and a length pinned at the ceiling is a length that has stopped
+saying anything: every saturated seam reports the same number, the mean
+lands above it, and the cut chosen from the lengths above the mean can end
+up above every length in the bake. Sixteen is four steps of headroom past
+that, still finite, and no barbell reaches it.
+
 ## Constants
 
 | constant | value | role |
 | --- | --- | --- |
 | $\alpha$ | $\tfrac12$ | the walks' laziness, as for curvature |
 | $\varepsilon$ | $\tfrac12$ | the share of $\kappa$ a length moves by, per step |
-| floor, ceiling | $0.1$, $4$ | the shortest and longest a link may become, before rescaling |
+| floor, ceiling | $0.1$, $16$ | the shortest and longest a link may become, before rescaling |
 | candidate cuts | $\le 64$ | distinct lengths above the mean, thinned to quantiles past that |
 
 ## Aesthetic terms

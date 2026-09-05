@@ -20,7 +20,7 @@ that page, extracted because a model worth deriving is worth reading.
 | `sky/heat` | the heat equation on the graph — open a note and warmth diffuses along its links |
 | `sky/curvature` | Ollivier–Ricci curvature per link, by exact optimal transport between the two ends' lazy walks — a bridge is negative, a clique positive |
 | `sky/hks` | the heat kernel signature — what diffusing from every note at once leaves at each one, sampled at two times so a note reads locally busy against structurally central |
-| `sky/ricci-flow` | discrete Ricci flow on link lengths — a bridge stretches, a weave tightens, and the sky parts into the communities modularity reads off the lengths |
+| `sky/ricci-flow` | discrete Ricci flow on link lengths — a bridge stretches, a weave tightens, and the sky parts into the communities modularity reads off the lengths, counting how many of them the cut itself made |
 | `sky/notes-graph` | the rule that makes a sky of a notes feed: evergreen notes are stars, weekly notes mediate the links they pass through, landing pages never do |
 | `sky/semantic` | the sky by meaning — the notes' embeddings, reduced where the text lives, turned by Procrustes to face the link layout; the unlinked pairs that agree, and a Mantel test of how far meaning and links agree |
 | `orbits/kepler` | activity → semi-major axis → period by $T^2 \propto a^3$; position by solving Kepler's equation, not by lookup |

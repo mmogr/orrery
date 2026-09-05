@@ -134,3 +134,14 @@ test("validateFlow keeps links between known nodes with positive lengths and rea
     { steps: 0, eps: 0, cut: 0, q: 0, clusters: 0, nodes: [], edges: [] });
   assert.equal(validateFlow({ nodes: ["a", "b"], edges: [[0, 1, 1], [1, 0, 1], [0, 1, 2]] }, { nodes: 2, edges: 2 }).edges.length, 2);
 });
+
+test("validateFlow's parted is optional, whole, and never more than the count", () => {
+  const base = { steps: 10, eps: 0.5, cut: 1.7, q: 0.45, clusters: 3, nodes: [], edges: [] };
+  assert.equal(validateFlow({ ...base, parted: 2 }).parted, 2);
+  assert.equal(validateFlow({ ...base, parted: 0 }).parted, 0);
+  assert.equal(validateFlow(base).parted, undefined);              /* an older bake */
+  assert.equal(validateFlow({ ...base, parted: 4 }).parted, undefined);   /* more than the count */
+  assert.equal(validateFlow({ ...base, parted: -1 }).parted, undefined);
+  assert.equal(validateFlow({ ...base, parted: 1.5 }).parted, undefined);
+  assert.equal(validateFlow({ ...base, parted: "2" }).parted, undefined);
+});
