@@ -78,6 +78,29 @@ test("kernels: smoothing preserves a constant, differentiates a ramp, curves a p
   near(convolveReflect(flat, k2)[20], 0, 1e-9);
 });
 
+test("kernels: the odd extension keeps a ramp's slope to the last sample", () => {
+  const n = 41;
+  const ramp = Array.from({ length: n }, (_, i) => 3 * i + 2);
+  const flat = new Array(n).fill(7);
+  const k1 = gaussianKernel(1.5, 1);
+  /* the mirror reads a dead stop at both ends; the reflection through the
+     endpoint continues the ramp and reads its slope */
+  near(convolveReflect(ramp, k1)[0], 0, 1e-9);
+  near(convolveReflect(ramp, k1)[n - 1], 0, 1e-9);
+  const odd = convolveReflect(ramp, k1, true);
+  for (let i = 0; i < n; i++) near(odd[i], 3, 1e-6);
+  /* a level year still has no velocity: the extension of a constant through
+     its endpoint is that same constant */
+  for (const v of convolveReflect(flat, k1, true)) near(v, 0, 1e-9);
+});
+
+test("kernels: an extension shorter than the kernel still folds", () => {
+  /* h = 6 at sigma 1.5, so a four-sample series folds more than once */
+  const ramp = [0, 1, 2, 3];
+  const odd = convolveReflect(ramp, gaussianKernel(1.5, 1), true);
+  for (const v of odd) near(v, 1, 1e-6);
+});
+
 test("dft hears a planted rhythm", () => {
   const n = 52;
   const x = Array.from({ length: n }, (_, t) => 10 + 4 * Math.sin((2 * Math.PI * t) / 13));

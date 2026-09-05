@@ -4,10 +4,12 @@
    latest velocity against the year's own spread. docs/momentum-aurora.md. */
 import { gaussianKernel, convolveReflect } from "../math/kernels.ts";
 
-/* weekly sums from a daily series, exactly as the terrain bins days:
-   weeks of seven from index 0, the last partial week kept, ⌈n/7⌉ out.
-   The site hands this the terrain-aligned days — index 0 is the Sunday
-   opening the year's first column — so the chunks are Sunday-anchored. */
+/* weekly sums from a daily series: chunks of seven from index 0, the last
+   partial week kept, ⌈n/7⌉ out. What a chunk means is the caller's to
+   arrange — hand it days whose index 0 opens a calendar week and the sums
+   are that calendar's weeks; hand it an arbitrary window and they are only
+   sevens. This module knows no calendar. A caller that already has the
+   terrain's own column sums should pass those instead. */
 export function weekly(days: ArrayLike<number>): Float64Array {
   const n = days.length, out = new Float64Array(Math.ceil(n / 7));
   for (let i = 0; i < n; i++) out[(i / 7) | 0] += days[i];
@@ -16,12 +18,16 @@ export function weekly(days: ArrayLike<number>): Float64Array {
 
 /* the level and its first two derivatives, all from one Gaussian: smooth
    with the order-0 kernel, differentiate with the order-1 and order-2
-   forms, reflecting at the ends so the estimate holds to the edges */
+   forms, extending past the ends so each estimate holds to the edges.
+   The extension is chosen per order, opposite the kernel's parity: the even
+   orders mirror the samples, the odd one reflects through the endpoint. An
+   even mirror under the order-1 kernel would report a dead stop in the last
+   week of every year. */
 export function smoothed(x: ArrayLike<number>, sigma = 1.5):
   { s: Float64Array; d1: Float64Array; d2: Float64Array } {
   return {
     s: convolveReflect(x, gaussianKernel(sigma, 0)),
-    d1: convolveReflect(x, gaussianKernel(sigma, 1)),
+    d1: convolveReflect(x, gaussianKernel(sigma, 1), true),
     d2: convolveReflect(x, gaussianKernel(sigma, 2)),
   };
 }

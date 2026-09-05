@@ -31,7 +31,7 @@ that page, extracted because a model worth deriving is worth reading.
 | `terrain/*` | a contribution heightfield with an analytic gradient, rivers by steepest descent, Lambert shading with a named lamp, snow by polygon clipping, and the year's derivatives, inflections and entropy |
 | `camera` | exponential follows and a damped harmonic sway, fitted from the per-frame constants they replace |
 | `math/circular` | the week on a circle: a von Mises fit to weekday commits — mean day, concentration κ, and a density that cannot overflow |
-| `math/*` | the small dense toolbox underneath: Cholesky, Jacobi eigen, Gaussian derivative kernels, DFT, lagged correlation, Benjamini–Hochberg, entropy |
+| `math/*` | the small dense toolbox underneath: Cholesky, Jacobi eigen, Gaussian derivative kernels with a per-parity boundary extension, DFT, lagged correlation, Benjamini–Hochberg, entropy |
 | `math/wavelet` | the year's beat in time: a Morlet scalogram of the weekly series by direct convolution, the cone of influence that says which scales each week can vouch for, and the ridge — which period beat loudest, week by week |
 
 Every model has a derivation in [`docs/`](./docs) listing its equations and
