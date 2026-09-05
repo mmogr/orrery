@@ -1,5 +1,14 @@
 # @mmogr/orrery
 
+## 0.4.0
+
+### Minor Changes
+
+- f207017: The flow says how many constellations it parted: `cutCommunities` returns `parted`, the community count less the graph's own components, so a consumer can say what the cut *did* rather than how many pieces the sky happens to be in. `FlowFeed.parted` and `validateFlow` carry it, optional and never larger than the count, so an older bake still validates. `FLOW_DEFAULTS.ceil` rises from 4 to 16: at ten steps a real notes graph pins a dozen bridges against a ceiling of four, and a length pinned at the ceiling has stopped saying anything — enough of them and the cut chosen from the lengths above the mean lands above every length in the bake.
+- ee8c2d8: `magnitudes` in `sky/hks`: the heat kernel signature read on Pogson's ratio, $m = -2.5\log_{10}(v / \max v)$, so a consumer drawing it has a scale that uses its whole range instead of spending it on the top few notes. Zero is the brightest, a factor of a hundred is five magnitudes, and a non-positive value is floored rather than sent to infinity. `LinkOpts.perNode` in `sky/semantic`: at most this many suggested pairs may touch any one note, so a dense corner of the corpus cannot take every place in the list and say the same thing five times. Both default to today's behaviour.
+- 78c48d0: The velocity holds to the last week: `convolveReflect` takes an `odd` flag and extends the series *through* its endpoint ($\tilde{x}[n-1+m] = 2x[n-1] - x[n-1-m]$) rather than mirroring it about it, and `smoothed` chooses the extension per order — the odd order-1 kernel against the odd extension, the even orders against the mirror. Under the mirror alone the order-1 estimate is identically zero at both ends, so a year that climbed all December reported a dead stop in its final week and momentum with it. `weekly` no longer claims to know what a chunk of seven means; that is the caller's calendar, not this module's.
+- 7b49bcc: Two text feeds pass the same gate as the rest. `ExcerptsFeed` / `validateExcerpts`: a note's opening prose, one line, keyed on the `html` path the graph feed already emits — trimmed, capped, deduped, and optional in the strong sense, so `validateExcerpts(null)` is the empty contract. `TextIndexManifest` / `TextShard` with `validateTextIndexManifest` and `validateTextShard`: a sharded inverted index, so a page can search a corpus's full text by fetching the one shard its query hashes into. A shard name is checked as a *name* rather than a path, since the consumer turns it into a URL, and a shard is built with a null prototype, since it is read by key. `docs/feeds.md` is the first document for the feed layer and describes every contract in the package.
+
 ## 0.3.0
 
 ### Minor Changes
