@@ -6,10 +6,10 @@
 
 The daily contribution counts are summed into weeks exactly as the terrain
 bins them: chunks of seven from index 0, the last partial week kept, so $n$
-days yield $\lceil n/7 \rceil$ sums. The site hands this function the
-terrain-aligned days — index 0 is the Sunday that opens the year's first
-column — which makes the chunks Sunday-anchored without this module knowing
-a calendar exists.
+days yield $\lceil n/7 \rceil$ sums. What a chunk means belongs to the
+caller: a series whose index 0 opens a calendar week yields that calendar's
+weeks, and a caller who already holds its own column sums should hand those
+over instead of re-chunking days. This module knows no calendar.
 
 ## Gaussian derivatives
 
@@ -23,9 +23,40 @@ $G_\sigma(i) = e^{-i^2/2\sigma^2}$ sampled on $i \in [-\lceil 4\sigma\rceil,
 - **order 2** — $(i^2 - s)\,G_\sigma(i)$ with $s$ chosen to kill the
   constant response, scaled so $t^2/2$ answers 1: the acceleration $d_2$.
 
-The series reflects at both ends before convolving, so the estimates hold
-to the edges instead of fading. Smoothing and differentiating commute here
-by construction — $d_1$ *is* the derivative of the Gaussian-smoothed year.
+Smoothing and differentiating commute here by construction — $d_1$ *is* the
+derivative of the Gaussian-smoothed year.
+
+## The boundary, per parity
+
+A kernel of half-width $h$ needs $h$ samples that do not exist at either
+end, and how they are invented decides what the estimate says about the
+year's first and last weeks — the two the sky cares most about, since
+momentum reads $d_1$ at the very last one.
+
+Two extensions, and the choice is forced by parity. The **mirror** repeats
+the samples about the endpoint,
+
+$$\tilde{x}[-m] = x[m], \qquad \tilde{x}[n-1+m] = x[n-1-m],$$
+
+which is even about the end. Integrated against the odd order-1 kernel that
+is $\int (\text{even}) \cdot (\text{odd}) = 0$: the mirror reports a dead
+stop in the last week of *every* year, whatever the year did. The
+**reflection through the endpoint** continues the series instead,
+
+$$\tilde{x}[-m] = 2x[0] - x[m], \qquad
+  \tilde{x}[n-1+m] = 2x[n-1] - x[n-1-m],$$
+
+which is odd about the end, and which a ramp satisfies exactly — so a year
+climbing at three a week still reads three in its final week. The same
+argument run the other way forces $d_2$ to zero under that extension, so the
+orders take opposite extensions: $d_1$ reflects through the endpoint, $s$
+and $d_2$ mirror. In short, **the extension's parity is the opposite of the
+kernel's**.
+
+`convolveReflect(x, k, odd)` folds an index back into range one reflection
+at a time, carrying the affine correction $\tilde{x}[j] = a + b\,x[j]$ each
+fold contributes, so a kernel wider than the series still extends correctly
+rather than only once.
 
 ## Inflections
 

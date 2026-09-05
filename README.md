@@ -19,10 +19,10 @@ that page, extracted because a model worth deriving is worth reading.
 | `sky/springs` | a velocity-Verlet layer over the rest state: springs breathe, hands deform, the shape comes home |
 | `sky/heat` | the heat equation on the graph — open a note and warmth diffuses along its links |
 | `sky/curvature` | Ollivier–Ricci curvature per link, by exact optimal transport between the two ends' lazy walks — a bridge is negative, a clique positive |
-| `sky/hks` | the heat kernel signature — what diffusing from every note at once leaves at each one, sampled at two times so a note reads locally busy against structurally central |
-| `sky/ricci-flow` | discrete Ricci flow on link lengths — a bridge stretches, a weave tightens, and the sky parts into the communities modularity reads off the lengths |
+| `sky/hks` | the heat kernel signature — what diffusing from every note at once leaves at each one, sampled at two times so a note reads locally busy against structurally central, and read as magnitudes on Pogson's ratio when it has to be drawn |
+| `sky/ricci-flow` | discrete Ricci flow on link lengths — a bridge stretches, a weave tightens, and the sky parts into the communities modularity reads off the lengths, counting how many of them the cut itself made |
 | `sky/notes-graph` | the rule that makes a sky of a notes feed: evergreen notes are stars, weekly notes mediate the links they pass through, landing pages never do |
-| `sky/semantic` | the sky by meaning — the notes' embeddings, reduced where the text lives, turned by Procrustes to face the link layout; the unlinked pairs that agree, and a Mantel test of how far meaning and links agree |
+| `sky/semantic` | the sky by meaning — the notes' embeddings, reduced where the text lives, turned by Procrustes to face the link layout; the unlinked pairs that agree — one a note, if asked — and a Mantel test of how far meaning and links agree |
 | `orbits/kepler` | activity → semi-major axis → period by $T^2 \propto a^3$; position by solving Kepler's equation, not by lookup |
 | `orbits/svd` | language space: the principal directions of a repo × language byte matrix, stretching and leaning each orbit |
 | `orbits/binaries` | double planets: repos whose commits rose and fell together, found by lagged correlation against a permutation null with a stated false-discovery rate |
@@ -30,8 +30,9 @@ that page, extracted because a model worth deriving is worth reading.
 | `moon` | the true lunar age from a truncated Meeus ephemeris, held against the old mean-lunation model it replaces |
 | `terrain/*` | a contribution heightfield with an analytic gradient, rivers by steepest descent, Lambert shading with a named lamp, snow by polygon clipping, and the year's derivatives, inflections and entropy |
 | `camera` | exponential follows and a damped harmonic sway, fitted from the per-frame constants they replace |
+| `feeds/*` | the contracts the observatory's public feeds speak, and total validators that turn whatever was actually sent into them — never throwing, never trusting |
 | `math/circular` | the week on a circle: a von Mises fit to weekday commits — mean day, concentration κ, and a density that cannot overflow |
-| `math/*` | the small dense toolbox underneath: Cholesky, Jacobi eigen, Gaussian derivative kernels, DFT, lagged correlation, Benjamini–Hochberg, entropy |
+| `math/*` | the small dense toolbox underneath: Cholesky, Jacobi eigen, Gaussian derivative kernels with a per-parity boundary extension, DFT, lagged correlation, Benjamini–Hochberg, entropy |
 | `math/wavelet` | the year's beat in time: a Morlet scalogram of the weekly series by direct convolution, the cone of influence that says which scales each week can vouch for, and the ridge — which period beat loudest, week by week |
 
 Every model has a derivation in [`docs/`](./docs) listing its equations and

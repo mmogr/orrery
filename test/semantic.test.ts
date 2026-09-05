@@ -60,6 +60,38 @@ test("cosine is 1 on a copy, 0 against the zero vector", () => {
   near(cosine(v, 3, 0, 2), 0);
 });
 
+test("semanticLinks: perNode lets a note keep only its strongest", () => {
+  /* four notes in a huddle and a pair of their own off to one side.
+     Unlimited, the huddle's pairs take the whole list and note 1 appears
+     three times over; at one a note, every note appears once and the pair
+     off to the side gets a place. */
+  const n = 6, dim = 2;
+  const v = new Float64Array([
+    1, 0,                          /* 0 \                      */
+    1, 0.02,                       /* 1  | the huddle: every    */
+    1, 0.05,                       /* 2  | pair of them is near */
+    1, 0.09,                       /* 3 /                       */
+    0, 1,                          /* 4 \ a pair of their own,  */
+    0.06, 1,                       /* 5 / farther apart than any of the huddle's */
+  ]);
+  const g: Graph = { n, edges: [] };
+  const all = semanticLinks(v, n, dim, g, { count: 4, minSim: 0.5 });
+  assert.equal(all.length, 4);
+  assert.equal(all.filter(([a, b]) => a === 1 || b === 1).length, 2);
+  assert.ok(!all.some(([a, b]) => a === 4 && b === 5), "the distant pair is crowded out");
+
+  const one = semanticLinks(v, n, dim, g, { count: 4, minSim: 0.5, perNode: 1 });
+  assert.deepEqual(one[0].slice(0, 2), all[0].slice(0, 2));   /* the strongest pair still leads */
+  const seen = new Set<number>();
+  for (const [a, b] of one) {
+    assert.ok(!seen.has(a) && !seen.has(b), `${a}–${b} reuses a note: ${JSON.stringify(one)}`);
+    seen.add(a); seen.add(b);
+  }
+  assert.ok(one.some(([a, b]) => a === 4 && b === 5), `the distant pair gets in: ${JSON.stringify(one)}`);
+  /* perNode 0 is the old behaviour exactly */
+  assert.deepEqual(semanticLinks(v, n, dim, g, { count: 4, minSim: 0.5, perNode: 0 }), all);
+});
+
 test("semanticLinks skips links and zero vectors and ranks the unlinked twin first", () => {
   const n = 6, dim = 3;
   const v = new Float64Array([

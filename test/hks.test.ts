@@ -1,7 +1,7 @@
 /* The heat kernel signature, held to its identities. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { heatKernelSignature, HKS_SCALES } from "../src/sky/hks.ts";
+import { heatKernelSignature, magnitudes, HKS_SCALES } from "../src/sky/hks.ts";
 import { normalisedLaplacian } from "../src/sky/laplacian.ts";
 import type { Graph } from "../src/sky/laplacian.ts";
 import { jacobiEigen } from "../src/math/linalg.ts";
@@ -144,4 +144,24 @@ test("the array is n × times.length, row-major by node", () => {
   }
   /* and every value is a return probability: in (0, 1] */
   for (const v of h) assert.ok(v > 0 && v <= 1 + 1e-12, `out of range: ${v}`);
+});
+
+test("magnitudes: Pogson's ratio, five per factor of a hundred", () => {
+  const m = magnitudes([100, 1]);
+  near(m[0], 0, 1e-12);                        /* the brightest is zero */
+  near(m[1], 5, 1e-12);                        /* a hundredth is five fainter */
+  /* monotone, and a factor of 2.512 is one magnitude */
+  const s = magnitudes([8, 4, 2, 1]);
+  for (let i = 1; i < s.length; i++) assert.ok(s[i] > s[i - 1]);
+  near(s[1] - s[0], 2.5 * Math.log10(2), 1e-12);
+  /* a zero is floored, not sent to infinity */
+  const z = magnitudes([1, 0]);
+  assert.ok(Number.isFinite(z[1]) && z[1] > 0, `zero read ${z[1]}`);
+  near(z[1], 30, 1e-9);                        /* −2.5 log10(1e-12) */
+  /* nothing bright at all: all zeros out, no NaN */
+  assert.deepEqual([...magnitudes([0, 0])], [0, 0]);
+  assert.deepEqual([...magnitudes([])], []);
+  /* and the signature's own scale: a hub against a leaf */
+  const h = magnitudes(heatKernelSignature(cliques()));
+  for (const v of h) assert.ok(Number.isFinite(v) && v >= 0);
 });

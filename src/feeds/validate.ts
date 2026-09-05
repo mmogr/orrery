@@ -6,7 +6,8 @@
    one sanctioned pseudonym. Callers own their sinks: these promise shape,
    not markup safety — escape at the edge you print. */
 import type { GraphFeed, GraphNode, DayRecord, RepoRecord, RecentRow,
-              RepoLangs, LangBytes, Ghosts, SemanticFeed, SemanticNote, FlowFeed } from "./types.ts";
+              RepoLangs, LangBytes, Ghosts, SemanticFeed, SemanticNote, FlowFeed,
+              Excerpt, ExcerptsFeed, TextIndexManifest, TextShard } from "./types.ts";
 
 export const okName = (r: unknown): r is string =>
   typeof r === "string" && /^[A-Za-z0-9._-]{1,100}$/.test(r);
@@ -129,6 +130,72 @@ export function validateSemantic(d: unknown, caps = { notes: 2000, dim: 64 }): S
   return out;
 }
 
+/* the excerpts feed: a note is a string html of sensible length and a
+   string line, trimmed and cut at the cap; the first note wins a duplicate
+   html; a note whose line is empty after trimming carries nothing and is
+   dropped. Optional, like the semantic feed: a site whose notes have not
+   published excerpts yet validates null into the empty contract and says
+   nothing rather than nothing-at-all. */
+export function validateExcerpts(d: unknown, caps = { notes: 2000, ex: 200 }): ExcerptsFeed {
+  const raw = (d && typeof d === "object" ? d : {}) as any;
+  const seen = new Set<string>();
+  const notes: Excerpt[] = (Array.isArray(raw.notes) ? raw.notes : [])
+    .filter((n: any) => n && typeof n === "object" && typeof n.html === "string"
+      && n.html.length > 0 && n.html.length <= 300 && typeof n.ex === "string")
+    .filter((n: any) => !seen.has(n.html) && seen.add(n.html))
+    .map((n: any): Excerpt => ({ html: n.html, ex: n.ex.trim().slice(0, caps.ex) }))
+    .filter((n: Excerpt) => n.ex.length > 0)
+    .slice(0, caps.notes);
+  return { v: 1, notes };
+}
+
+/* the text index's manifest: n shards within the cap, exactly n names, each
+   a bare hex-and-.json file name (never a path — a name from a feed becomes
+   a URL, and a name that could climb out of its directory is not a name),
+   and the ids the postings index into. Anything off and the manifest is
+   empty, which the consumer reads as "no full-text search today". */
+export function validateTextIndexManifest(d: unknown, caps = { n: 64, ids: 2000 }): TextIndexManifest {
+  const raw = (d && typeof d === "object" ? d : {}) as any;
+  const empty: TextIndexManifest = { v: 1, n: 0, shards: [], ids: [] };
+  const n = Number.isInteger(raw.n) && raw.n > 0 && raw.n <= caps.n ? raw.n : 0;
+  if (!n || !Array.isArray(raw.shards) || raw.shards.length !== n) return empty;
+  const shards: string[] = raw.shards
+    .filter((f: unknown) => typeof f === "string" && /^[a-f0-9]{8,64}\.json$/.test(f));
+  if (shards.length !== n) return empty;
+  const ids: string[] = (Array.isArray(raw.ids) ? raw.ids : [])
+    .filter((h: unknown) => typeof h === "string" && h.length > 0 && h.length <= 300)
+    .slice(0, caps.ids);
+  if (!ids.length) return empty;
+  return { v: 1, n, shards, ids };
+}
+
+/* one shard of the text index: a plain map from term to the ids it appears
+   in. Own properties only — a shard arrives as JSON and is read by key, so
+   an inherited "constructor" or "__proto__" would answer a query it has no
+   business answering. Every id is a whole number below idCount, deduped and
+   ordered; a term too long or a posting out of range is dropped. */
+export function validateTextShard(d: unknown, idCount: number,
+                                  caps = { terms: 5000, term: 64, ids: 2000 }): TextShard {
+  const out: TextShard = Object.create(null) as TextShard;
+  if (!d || typeof d !== "object" || Array.isArray(d)) return out;
+  let kept = 0;
+  for (const term of Object.keys(d as object)) {
+    if (kept >= caps.terms) break;
+    if (!term.length || term.length > caps.term) continue;
+    const v = (d as any)[term];
+    if (!Array.isArray(v)) continue;
+    const seen = new Set<number>();
+    const ids = v.filter((i: unknown) => Number.isInteger(i) && (i as number) >= 0
+        && (i as number) < idCount && !seen.has(i as number) && seen.add(i as number))
+      .slice(0, caps.ids)
+      .sort((a: number, b: number) => a - b);
+    if (!ids.length) continue;
+    out[term] = ids;
+    kept++;
+  }
+  return out;
+}
+
 /* the flow feed: node ids are strings, a link is two indices in range and
    a positive finite length, the counts are whole numbers, q is a
    modularity in [−1, 1]; anything else is dropped or read as zero */
@@ -147,6 +214,12 @@ export function validateFlow(d: unknown, caps = { nodes: 2000, edges: 8000 }): F
   const whole = (v: unknown): number => (Number.isInteger(v) && (v as number) >= 0 ? v as number : 0);
   const pos = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
   const q = typeof raw.q === "number" && raw.q >= -1 && raw.q <= 1 ? raw.q : 0;
-  return { steps: whole(raw.steps), eps: pos(raw.eps), cut: pos(raw.cut), q,
-           clusters: whole(raw.clusters), nodes, edges };
+  const clusters = whole(raw.clusters);
+  const out: FlowFeed = { steps: whole(raw.steps), eps: pos(raw.eps), cut: pos(raw.cut), q,
+                          clusters, nodes, edges };
+  /* optional, and never more than the communities it is counted among: an
+     older bake has no `parted` and the consumer falls back to the count */
+  if (Number.isInteger(raw.parted) && raw.parted >= 0 && raw.parted <= clusters)
+    out.parted = raw.parted;
+  return out;
 }

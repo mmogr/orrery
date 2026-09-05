@@ -68,3 +68,30 @@ export function heatKernelSignature(g: Graph, times: ArrayLike<number> = HKS_SCA
   }
   return out;
 }
+
+/* the signature as magnitudes, in the astronomers' sense: the brightest
+   value is magnitude 0 and every factor of a hundred below it is five more,
+
+     m_i = −2.5 log10(v_i / max v).
+
+   A heat kernel signature spans orders of magnitude — a hub note holds a
+   hundred times what a leaf does — so a consumer that maps it linearly to
+   anything (a radius, an opacity) spends its whole range on the top few
+   notes and draws the rest identically. Pogson's ratio is the compression
+   astronomy settled on for exactly that distribution, and it has the useful
+   property that a difference of magnitudes is a ratio of brightnesses,
+   whatever the units the signature came in.
+
+   Small is bright, as in the sky: the maximum reads 0 and everything else
+   is positive. A non-positive value is floored rather than sent to
+   infinity, so an isolated note still lands somewhere finite; an all-zero
+   input is all zeros out. */
+export function magnitudes(values: ArrayLike<number>, floor = 1e-12): Float64Array {
+  const n = values.length, out = new Float64Array(n);
+  let max = 0;
+  for (let i = 0; i < n; i++) if (values[i] > max) max = values[i];
+  if (!(max > 0)) return out;
+  for (let i = 0; i < n; i++)
+    out[i] = -2.5 * Math.log10(Math.max(values[i], floor) / max);
+  return out;
+}

@@ -147,6 +147,21 @@ test("smoothed: a parabola's second derivative reads one mid-series", () => {
   near(d2[20], 1, 1e-9);                       /* curvature exactly recovered */
 });
 
+test("smoothed: the velocity holds to the last week", () => {
+  /* a year that climbs steadily is still climbing in its last week: the
+     order-1 estimate reflects through the endpoint, not about it */
+  const x = Float64Array.from({ length: 53 }, (_, i) => 2 * i);
+  const { d1, d2 } = smoothed(x);
+  near(d1[52], 2, 1e-6);
+  near(d1[0], 2, 1e-6);
+  assert.ok(momentum(d1) > 0, "a climbing year has positive momentum");
+  near(d2[26], 0, 1e-9);                       /* a ramp has no curvature */
+  /* and a level year still reads flat at both ends */
+  const level = smoothed(Float64Array.from({ length: 53 }, () => 4));
+  near(level.d1[52], 0, 1e-9);
+  near(level.d1[0], 0, 1e-9);
+});
+
 test("inflections: the turn of a sine, gated by pace", () => {
   const x = Float64Array.from({ length: 64 }, (_, i) => Math.sin((2 * Math.PI * i) / 32));
   const { d1, d2 } = smoothed(x);
