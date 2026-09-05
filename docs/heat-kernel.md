@@ -129,11 +129,39 @@ $\mathrm{HKS}_t(i) = d_i / 2m$ at every scale — the shape the signature
 was heading for, without the seconds to get there. On a graph of a few
 hundred notes the cap never fires.
 
+## Magnitudes
+
+The signature spans orders of magnitude — a hub note holds a hundred times
+what a leaf does — so a consumer that maps it linearly onto anything (a
+radius, an opacity, a colour ramp) spends its whole range on the top few
+notes and draws every other one identically. `magnitudes` compresses it the
+way astronomy compressed exactly this distribution, on Pogson's ratio:
+
+$$m_i = -2.5 \log_{10} \frac{v_i}{\max_j v_j}.$$
+
+The brightest value is $m = 0$ and every factor of a hundred below it is
+five magnitudes fainter; a factor of $100^{1/5} = 2.512$ is one. Two
+properties earn it. A *difference* of magnitudes is a *ratio* of
+signatures, so the scale is the same whatever units the signature came in
+and whatever the brightest note happens to be that week. And the whole
+range is used: a corpus whose signatures run over three decades occupies
+$7.5$ magnitudes evenly rather than crowding $99\%$ of the notes into the
+bottom pixel of a linear ramp.
+
+Small is bright, as in the sky. A value at or below zero is floored (at
+$10^{-12}$ by default) rather than sent to infinity, so an isolated note
+lands somewhere finite; an input with nothing positive in it returns all
+zeros. **Turning a magnitude into a radius, an alpha or anything else
+drawn is the consumer's aesthetic term, not this module's** — the module
+says only how much fainter one note is than another.
+
 ## Constants
 
 | constant | value | role |
 | --- | --- | --- |
 | `HKS_SCALES` | $[1, 10]$ | default times to sample the kernel |
+| Pogson's ratio | $-2.5\log_{10}$ | magnitudes per decade of signature: five per factor of a hundred |
+| magnitude floor | $10^{-12}$ | the faintest a value is read as, so a zero stays finite |
 | `HKS_MAX_DENSE` | $600$ | largest component decomposed by Jacobi; beyond it, $d_i/2m$ |
 | Jacobi tolerance | $10^{-11}$ of matrix scale | inherited from `jacobiEigen` |
 | Jacobi sweeps | $64$ | inherited cap, likewise |

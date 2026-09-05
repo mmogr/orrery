@@ -54,6 +54,17 @@ things and were never joined. A note the feed did not know is the zero
 vector and never pairs; ties break by index so the list is the same on
 every machine.
 
+`perNode` caps how many of those pairs may touch any one note. Without it
+the list is simply the top twelve, and a dense corner of the corpus — a
+course's five exam papers, which all resemble one another — takes every
+place in it, saying the same thing five times while the rest of the sky
+goes unremarked. With `perNode = 1` the list is walked in the same
+descending order and a note that has already been paired is skipped, so
+twelve suggestions are twelve *different* notes' best unmade link. Greedy
+down a sorted list is not the maximum-weight matching, and does not claim
+to be; what it guarantees is that the first pair is the strongest pair,
+which is the property a reader can check by looking.
+
 ## How far meaning and links agree
 
 One number for the whole sky: Mantel's test between two distances on the
@@ -87,6 +98,7 @@ $1/201$, which is all a legend sentence needs.
 | `dim` | 16 (the feed's) | principal directions kept by the notes site; the page reads whatever it is sent, up to 64 |
 | `count` | 12 | suggested links shown |
 | `minSim` | 0.5 | the least cosine a suggestion needs |
+| `perNode` | 0 (no limit) | at most this many suggested pairs may touch one note |
 | `permutations` | 200 | relabellings behind $p$; $p \ge 1/201$ |
 | `seed` | 1 | the relabellings' stream; a consumer may pick its own |
 | unreachable | $n$ | the hop distance charged between components |

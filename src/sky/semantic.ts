@@ -39,26 +39,47 @@ export function cosine(vectors: ArrayLike<number>, dim: number, i: number, j: nu
   return ni && nj ? dot / Math.sqrt(ni * nj) : 0;
 }
 
-export interface LinkOpts { count: number; minSim: number }
-export const LINK_DEFAULTS: LinkOpts = { count: 12, minSim: 0.5 };
+export interface LinkOpts {
+  count: number;
+  minSim: number;
+  perNode: number;   /* at most this many pairs may touch any one note; 0 is no limit */
+}
+export const LINK_DEFAULTS: LinkOpts = { count: 12, minSim: 0.5, perNode: 0 };
 
 /* the strongest pairs by cosine that the graph does not link, descending,
    [i, j, sim] with i < j; ties broken by index so the list is the same on
-   every machine. A zero vector never pairs. */
+   every machine. A zero vector never pairs.
+
+   With `perNode` set, the list is taken greedily down the same order but a
+   note that has already used its quota is skipped — the top pairs of a
+   dense corner (a course's five exam papers, which all resemble one
+   another) would otherwise fill the whole list between them and say the
+   same thing five times. Greedy on a sorted list is not the maximum-weight
+   matching; it is the one whose first pair is the strongest pair, which is
+   the property a reader checks. */
 export function semanticLinks(vectors: ArrayLike<number>, n: number, dim: number, g: Graph,
                               opts: Partial<LinkOpts> = {}): Array<[number, number, number]> {
-  const { count, minSim } = { ...LINK_DEFAULTS, ...opts };
+  const { count, minSim, perNode } = { ...LINK_DEFAULTS, ...opts };
   const linked = new Set<number>();
   for (const [a, b] of g.edges) linked.add(Math.min(a, b) * n + Math.max(a, b));
-  const out: Array<[number, number, number]> = [];
+  const all: Array<[number, number, number]> = [];
   for (let i = 0; i < n; i++)
     for (let j = i + 1; j < n; j++) {
       if (linked.has(i * n + j)) continue;
       const s = cosine(vectors, dim, i, j);
-      if (s >= minSim) out.push([i, j, s]);
+      if (s >= minSim) all.push([i, j, s]);
     }
-  out.sort((p, q) => q[2] - p[2] || p[0] - q[0] || p[1] - q[1]);
-  return out.slice(0, count);
+  all.sort((p, q) => q[2] - p[2] || p[0] - q[0] || p[1] - q[1]);
+  if (!perNode) return all.slice(0, count);
+  const used = new Int32Array(n);
+  const out: Array<[number, number, number]> = [];
+  for (const pair of all) {
+    if (out.length >= count) break;
+    if (used[pair[0]] >= perNode || used[pair[1]] >= perNode) continue;
+    used[pair[0]]++; used[pair[1]]++;
+    out.push(pair);
+  }
+  return out;
 }
 
 /* how far meaning and links agree: Mantel's test between hop distance on
