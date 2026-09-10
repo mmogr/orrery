@@ -1,5 +1,7 @@
 # @mmogr/orrery
 
+[![npm version](https://badge.fury.io/js/@mmogr%2Forrery.svg)](https://www.npmjs.com/package/@mmogr/orrery)
+
 The observatory's physics. Small derived models for pages that draw their
 data as a world: a sky whose shape comes from a graph's spectrum, planets
 that obey Kepler, a moon computed rather than faked, terrain lit by an
