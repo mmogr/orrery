@@ -48,6 +48,32 @@ test("transportCost matches brute force on 3×3 problems", () => {
   }
 });
 
+test("transportCost on equal masses is the cheapest assignment", () => {
+  /* with every mass 1/k an optimal plan is a permutation (Birkhoff), so all
+     k! of them bracket the optimum exactly; costs of one to three hops, as
+     the curvature feeds it, and real-valued ones, as the flow does */
+  const rnd = rng(11);
+  const perms = (k: number): number[][] =>
+    k === 0 ? [[]] : perms(k - 1).flatMap(p => Array.from({ length: k }, (_, i) => [...p.slice(0, i), k - 1, ...p.slice(i)]));
+  for (const k of [2, 4, 6]) for (const real of [false, true]) for (let trial = 0; trial < 10; trial++) {
+    const C = Float64Array.from({ length: k * k }, () => real ? 0.2 + 3 * rnd() : 1 + Math.floor(rnd() * 3));
+    const mass = new Float64Array(k).fill(1 / k);
+    let best = Infinity;
+    for (const p of perms(k)) best = Math.min(best, p.reduce((s, v, u) => s + C[u * k + v], 0) / k);
+    near(transportCost(mass, mass, C), best, 1e-12);
+  }
+});
+
+test("transportCost is exact when the two sides differ in size and mass", () => {
+  /* one source feeding three sinks, and its mirror: nothing to choose */
+  const C = new Float64Array([1, 2, 3]);
+  near(transportCost(new Float64Array([1]), new Float64Array([0.5, 0.3, 0.2]), C), 0.5 + 0.6 + 0.6);
+  near(transportCost(new Float64Array([0.5, 0.3, 0.2]), new Float64Array([1]), C), 0.5 + 0.6 + 0.6);
+  /* a plan that must be undone: the greedy first route is not in the optimum */
+  const D = new Float64Array([1, 2, 1, 3]);
+  near(transportCost(new Float64Array([0.5, 0.5]), new Float64Array([0.5, 0.5]), D), 1.5);
+});
+
 /* ---------------- curvature ---------------- */
 
 test("K_n at α = ½ has curvature n / (2(n − 1)) on every edge", () => {
