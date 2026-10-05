@@ -56,14 +56,23 @@ most negative edges are the graph's load-bearing beams.
 The transport problem is small — each support has $d + 1$ nodes and the
 costs are integers, because any node of one support is within three hops
 of any node of the other ($u \to i \to j \to v$) — so it is solved
-outright rather than approximated. `transportCost` runs successive
-shortest paths on the dense bipartite residual graph: from every source
-still holding mass, Dijkstra on reduced costs (Johnson potentials keep
-them non-negative after the first augmentation), then push the bottleneck
-amount along the path to the nearest sink still wanting mass, undoing
-flow where the path runs backward. Each augmentation saturates a source, a
-sink, or a backward edge, so the loop is finite; with a dozen nodes a side
-it is microseconds.
+outright rather than approximated. `transportCost` is the primal-dual
+method on the dense bipartite problem. A price on every source and every
+sink keeps each reduced cost $C_{uv} + p_u - p_v$ non-negative, and mass
+moves only along routes whose reduced cost is zero: a depth-first search
+finds one from a source still holding mass to a sink still wanting it,
+pushes the bottleneck amount, undoing flow where the route runs backward,
+and looks again. When the prices offer nothing more they are raised — one
+Dijkstra on the reduced costs, stopped at the nearest sink still wanting
+mass — and the search resumes. Each push saturates a source, a sink, or a
+backward edge, so the loop is finite.
+
+It replaced successive shortest paths, which ran that Dijkstra once per
+push. The costs take three values, so the prices need raising only a
+handful of times per link, where the pushes number about one per node of
+the supports; on a hub with thirty-odd neighbours that is the difference
+between a search over the whole residual graph thirty times and three.
+The two solvers agree to the last few bits.
 
 Two things keep it that small on a real graph. The costs come from one
 table: a breadth-first walk from every node, once, capped at three hops,
@@ -73,7 +82,7 @@ where it is: with a metric cost, moving overlapping mass away and
 replacing it can never beat leaving it, so only each side's surplus
 enters the transport. Inside a clique the neighbourhoods overlap almost
 entirely and the problem left is a few nodes a side; on the notes graph,
-seven hundred links take some thirty milliseconds.
+fourteen hundred links take some twenty milliseconds.
 
 Entropic regularisation (Sinkhorn) was considered and set aside: with unit
 costs the bias it introduces, of order $\varepsilon \log(|S_i|\,|S_j|)$,
