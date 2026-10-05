@@ -69,7 +69,12 @@ Written in strict TypeScript as ES modules; `npm run build` emits the
 JavaScript and declarations the package exports (installing from git runs
 it for you). `npm test` runs the suites under Node's own test runner,
 `npm run demo` serves the demo page, and the same demo runs live at
-<https://mmogr.github.io/orrery/>.
+<https://mmogr.github.io/orrery/>. Three of the tests
+look past the mathematics: `test/real-sky.test.ts` holds a real notes graph's
+curvature and flow to the numbers on file (`UPDATE_GOLDEN=1 npm test` rewrites
+them, for a change meant to move them) and the solver's work to a budget
+counted in steps rather than milliseconds, and `test/package.test.ts` packs
+the tarball and uses it by name, as a consumer would.
 
 ## Releasing
 
