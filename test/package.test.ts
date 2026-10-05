@@ -19,8 +19,12 @@ const run = (cmd: string, args: string[], cwd: string): string =>
 test("the packed package is dist and nothing else, and answers as the source does", () => {
   const tmp = mkdtempSync(join(tmpdir(), "orrery-pack-"));
   try {
-    /* npm pack runs `prepare`, so this is today's source, built */
-    const [packed] = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", tmp], root));
+    /* npm pack runs `prepare`, so this is today's source, built. npm 10
+       reports a list of packages; npm 12, which the release runs under,
+       an object keyed by name */
+    const report = JSON.parse(run("npm", ["pack", "--json", "--pack-destination", tmp], root));
+    const packed = Array.isArray(report) ? report[0] : report["@mmogr/orrery"];
+    assert.ok(packed && Array.isArray(packed.files), "npm pack reported no package");
     const files: string[] = packed.files.map((f: { path: string }) => f.path);
     for (const f of files)
       assert.ok(f.startsWith("dist/") || ["package.json", "README.md", "LICENSE"].includes(f), `${f} would be published`);
