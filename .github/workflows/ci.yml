@@ -23,6 +23,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - run: npm install -g npm@latest       # the npm the release runs under, so a pull request meets it first
       - run: npm ci                  # runs prepare, so the emit to dist/ is checked too
       - run: npm run typecheck
       - run: npm test
