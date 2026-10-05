@@ -1,0 +1,79 @@
+# Dependabot keeps what the orrery is built with current. The package itself
+# has no dependencies and must stay that way; these are the four tools that
+# build and test it, and the actions the workflows run.
+#
+# Releases need nothing here: changesets already gathers the notes into a
+# "Version Packages" pull request, and merging it publishes. A dependency
+# bump touches no file under src/, so it needs no changeset and releases
+# nothing.
+#
+# Every day at 06:00 in the maintainer's timezone (`interval: daily` would
+# skip weekends), as gglib does, and grouped: a day with nothing new opens
+# nothing, and when a group's contents change Dependabot replaces its open
+# pull request rather than adding another. A release must be three days old
+# before it is proposed, which leaves time for a bad one to be pulled.
+# Security updates skip the schedule, the cooldown and the `update-types`
+# ignores.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: cron
+      cronjob: "0 6 * * *"
+      timezone: Australia/Brisbane
+    cooldown:
+      default-days: 3
+    # An update the range already admits changes package-lock.json only.
+    versioning-strategy: increase-if-necessary
+    commit-message:
+      prefix: "chore(deps)"
+    ignore:
+      # CI never runs the changesets CLI; the release workflow does. A major
+      # would first be exercised by a real release, so it is bumped by hand,
+      # in a pull request someone watches through one.
+      - dependency-name: "@changesets/cli"
+        update-types: ["version-update:semver-major"]
+    groups:
+      # typescript, esbuild and @types/node are all exercised by every pull
+      # request: the type-check, the suite (the size budget bundles with
+      # esbuild, the package test compiles a consumer) and the demo build.
+      # Their minors and patches ride together; a major arrives alone.
+      tools:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    # "/" points Dependabot at .github/workflows.
+    directory: "/"
+    schedule:
+      interval: cron
+      cronjob: "0 6 * * *"
+      timezone: Australia/Brisbane
+    cooldown:
+      default-days: 3
+    commit-message:
+      prefix: "ci(deps)"
+    # checkout and setup-node run on every pull request, so their majors can
+    # ride the group and be seen to work. These four run only after a merge
+    # to main, in the release and the demo's deploy: a major would first run
+    # for real, so each is bumped by hand.
+    ignore:
+      - dependency-name: changesets/action
+        update-types: ["version-update:semver-major"]
+      - dependency-name: actions/configure-pages
+        update-types: ["version-update:semver-major"]
+      - dependency-name: actions/upload-pages-artifact
+        update-types: ["version-update:semver-major"]
+      - dependency-name: actions/deploy-pages
+        update-types: ["version-update:semver-major"]
+    groups:
+      actions:
+        patterns: ["*"]
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
