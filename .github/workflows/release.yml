@@ -49,10 +49,16 @@ jobs:
           # the tree to the next one and moved HEAD onto its own branch, so
           # ask the push that woke us, not the file and not HEAD
           v="$(git show "$GITHUB_SHA:package.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
-          # a fresh publish takes the registry a moment to admit to
-          for i in 1 2 3 4 5 6; do
+          # a fresh publish takes the registry a while to admit to: 0.4.1 was
+          # not there a minute after it was published, and this step gave up
+          # in silence, green, with no tag and no release. So ask for five
+          # minutes, and then say so in red: run again, the version is found,
+          # and the release is made from this same push. Better this push than
+          # a later one: for 0.4.1 every later push was refused the tag (403),
+          # from the first that changed a workflow file onwards
+          for i in $(seq 1 30); do
             npm view "@mmogr/orrery@$v" version >/dev/null 2>&1 && break
-            [ "$i" = 6 ] && { echo "$v is not on npm yet; nothing to tag"; exit 0; }
+            [ "$i" = 30 ] && { echo "::error::$v is not on npm after five minutes, so it has no tag and no release. Run this again once npm has it."; exit 1; }
             sleep 10
           done
           if gh release view "v$v" >/dev/null 2>&1; then
