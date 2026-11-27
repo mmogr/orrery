@@ -1,7 +1,7 @@
-/* The observatory's dice: a linear congruential generator, seeded, so every
+/* Seeded dice: a linear congruential generator, so every
    run of a model is a function of its inputs and nothing else. The constants
-   are Numerical Recipes'; the stream is exactly the one the page has always
-   rolled, so a layout seeded rng(7) tonight is the layout of record. */
+   are Numerical Recipes'; the stream never changes between versions, so a
+   layout seeded rng(7) is the same layout wherever and whenever it is made. */
 export function rng(seed: number): () => number {
   let s = seed >>> 0;
   return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;

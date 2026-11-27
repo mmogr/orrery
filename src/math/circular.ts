@@ -1,9 +1,9 @@
 /* Statistics on a circle, for the week. A plain mean of weekdays fails at
    the wrap — Saturday and Sunday average to Wednesday — so the week is
-   put on a circle and its commits are treated as a von Mises sample: the
+   put on a circle and its counts are treated as a von Mises sample: the
    direction of their resultant is the mean weekday, its length says how
    concentrated they are, and κ is the concentration in the density's own
-   parameter. See docs/tide.md. */
+   parameter. See docs/circular.md. */
 
 export interface VonMises {
   mu: number;      /* mean direction, radians in [0, 2π) */

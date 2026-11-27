@@ -1,7 +1,7 @@
 {
   "name": "@mmogr/orrery",
   "version": "0.4.1",
-  "description": "The observatory's physics: spectral skies, Kepler orbits, a real moon, shaded terrain \u2014 small derived models for data-driven pages, with the derivations.",
+  "description": "Small, exact mathematics for pages that draw their data: a graph's spectrum, heat and curvature, Kepler's problem, frame-rate-free motion, and the dense maths underneath, with the derivations.",
   "type": "module",
   "license": "MIT",
   "repository": {
