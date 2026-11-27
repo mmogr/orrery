@@ -1,5 +1,0 @@
----
-"@mmogr/orrery": minor
----
-
-The package is mathematics with no site in it. Everything that was mattogrady.com's and not a model has gone: the feed contracts and validators (`feeds/*`), the notes-graph rule, the semantic layout, the spring layout (`stepLayout`, `DEFAULT_FORCES`), the terrain modules, the moon, `Observable`, the orbit fitting (`FIT`, `fitKepler`, `elementsFrom`, `arcPos`), `findBinaries`, `languageSpace`, and the camera's fitted constants and fence (`CAMERA`, `fence`). 0.4.1 stays on npm for anyone who used them. What is left is renamed for what it is: `sky/*` is `graph/*`, `orbits/*` is `orbit/*`, `camera` is `motion`, `svd` is in `math/svd`; the names exported from the package's one entry point are unchanged. `Elements` loses `tilt`, and `phasePerturbations` takes its coupling `G` as a required argument instead of defaulting to one page's taste. The `Embedding` type is declared in `math/linalg`, where `procrustes` uses it, so the linear algebra no longer reaches up into the graph modules. Every function that stayed gives the numbers it gave: the real graph's curvature and flow still match the values on file.
