@@ -1,20 +1,22 @@
 # Heat on the graph
 
-Open a note and warmth spreads to its neighbours, then to theirs, fading
+*`src/graph/heat.ts`*
+
+Open a node and warmth spreads to its neighbours, then to theirs, fading
 as it goes. This is not a metaphor implemented with tweens — it is the
 heat equation on the graph, solved the simplest honest way.
 
 ## The discrete heat equation
 
 On a graph, the Laplacian plays the role $-\nabla^2$ plays in the
-continuum. With $L = L_{\mathrm{sym}}$ (docs/spectral-sky.md), the heat
+continuum. With $L = L_{\mathrm{sym}}$ (docs/spectral.md), the heat
 field $u \in \mathbb{R}^n$ obeys
 
 $$\frac{\partial u}{\partial t} = -L u.$$
 
 In the eigenbasis of $L$ each mode decays independently,
 $\hat{u}_k(t) = e^{-\lambda_k t}\, \hat{u}_k(0)$: rough disagreements
-between linked notes ($\lambda$ large) die fast, the smooth large-scale
+between linked nodes ($\lambda$ large) die fast, the smooth large-scale
 distribution ($\lambda$ small) lingers. That is exactly the look we want —
 a click flares locally and relaxes into a soft neighbourhood glow.
 
@@ -48,7 +50,7 @@ highest mode would ring sign-flipping from step to step.
 
 Two small facts worth recording. Isolated nodes have $L_{ii} = 1$ and no
 neighbours, so their heat simply relaxes toward $0$ at rate
-$\delta(1 - \Delta t)$ per step — a lone note cools alone. And total heat
+$\delta(1 - \Delta t)$ per step — a lone node cools alone. And total heat
 $\sum_i u_i$ is conserved (at $\delta = 1$) only on *regular* graphs,
 where the rows of $L_{\mathrm{sym}}$ sum to zero; on an uneven graph the
 normalisation trades a little mass at the hubs. We accept this: the field
@@ -67,7 +69,7 @@ drives glow, not accounting.
 
 The physics fixes everything except the cooling: **decay** is attention
 fading, not thermodynamics — $\delta = 1$ would let a reader's warmth pool
-forever, and how fast the sky forgets is a choice about mood, made by the
+forever, and how fast the field forgets is a choice about mood, made by the
 caller per frame. Likewise **dt and steps** trade sharpness for spread
 within the stability bound: many small steps give a rounder halo, one
 large step a tighter flare. The bound $0.45$ itself is physics; where a

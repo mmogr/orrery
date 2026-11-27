@@ -2,7 +2,14 @@
    problems a few hundred wide. Nothing here allocates per frame; everything
    is deterministic. */
 
-import type { Embedding } from "../sky/spectral.ts";
+
+/* points in up to three dimensions, one typed array per axis: what a layout
+   hands back, and what procrustes turns */
+export interface Embedding {
+  x: Float64Array;
+  y: Float64Array;
+  z: Float64Array;
+}
 
 /* Cholesky factor L (lower) of a symmetric positive-definite A, so LLᵀ = A.
    Throws if A is not positive definite. A is not modified. */

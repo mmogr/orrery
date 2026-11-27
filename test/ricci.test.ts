@@ -2,11 +2,10 @@
    clique that never moves. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ricciFlowStep, ricciFlow, modularity, cutCommunities } from "../src/sky/ricci-flow.ts";
-import { ollivierRicci } from "../src/sky/curvature.ts";
-import { shortestPaths } from "../src/sky/paths.ts";
-import { notesGraph } from "../src/sky/notes-graph.ts";
-import type { Graph } from "../src/sky/laplacian.ts";
+import { ricciFlowStep, ricciFlow, modularity, cutCommunities } from "../src/graph/ricci-flow.ts";
+import { ollivierRicci } from "../src/graph/curvature.ts";
+import { shortestPaths } from "../src/graph/paths.ts";
+import type { Graph } from "../src/graph/laplacian.ts";
 import { rng } from "../src/rng.ts";
 
 const near = (a: number, b: number, tol = 1e-9) =>
@@ -147,31 +146,3 @@ test("a notes-sized graph flows one step in a few milliseconds", () => {
 });
 
 /* ---------------- the notes graph ---------------- */
-
-const node = (id: string, course: string, week: number | null = null) =>
-  ({ id, label: id, course, week, tags: [], html: id.replace(/\.qmd$/, ".html") });
-
-test("notesGraph: stars only, weekly notes mediate, landing pages never do", () => {
-  const feed = {
-    nodes: [node("courses/c1/c1.qmd", "c1"), node("courses/c1/a.qmd", "c1"), node("courses/c1/b.qmd", "c1"),
-            node("courses/c1/c.qmd", "c1"), node("courses/c1/2026-01-05-w.qmd", "c1", 1), node("courses/c2/d.qmd", "c2")],
-    edges: [["courses/c1/2026-01-05-w.qmd", "courses/c1/a.qmd"], ["courses/c1/b.qmd", "courses/c1/2026-01-05-w.qmd"],
-            ["courses/c1/2026-01-05-w.qmd", "courses/c1/c.qmd"], ["courses/c1/c1.qmd", "courses/c1/a.qmd"],
-            ["courses/c1/c1.qmd", "courses/c2/d.qmd"], ["courses/c1/a.qmd", "courses/c1/b.qmd"],
-            ["courses/c1/a.qmd", "courses/c1/a.qmd"]] as Array<[string, string]>,
-  };
-  const g = notesGraph(feed);
-  assert.deepEqual(g.nodes.map(n => n.id), ["courses/c1/a.qmd", "courses/c1/b.qmd", "courses/c1/c.qmd", "courses/c2/d.qmd"]);
-  assert.deepEqual(g.edges, [["courses/c1/a.qmd", "courses/c1/b.qmd"],
-                             ["courses/c1/a.qmd", "courses/c1/c.qmd"], ["courses/c1/b.qmd", "courses/c1/c.qmd"]]);
-  assert.deepEqual([...g.hosts.entries()],
-    [["courses/c1/2026-01-05-w.qmd", ["courses/c1/a.qmd", "courses/c1/b.qmd", "courses/c1/c.qmd"]]]);
-});
-
-test("notesGraph: an index note past the fan-out cap mediates nothing", () => {
-  const stars = Array.from({ length: 65 }, (_, i) => node(`courses/c/s${i}.qmd`, "c"));
-  const feed = { nodes: [...stars, node("courses/c/2026-01-05-w.qmd", "c", 1)],
-                 edges: stars.map(s => ["courses/c/2026-01-05-w.qmd", s.id] as [string, string]) };
-  assert.equal(notesGraph(feed).edges.length, 0);
-  assert.equal(notesGraph(feed, { maxFanout: 65 }).edges.length, 65 * 64 / 2);
-});

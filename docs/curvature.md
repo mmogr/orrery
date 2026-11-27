@@ -1,7 +1,9 @@
 # Curvature
 
-A link between two notes can be a bottleneck or a thread in a weave. The
-picture should say which — a bridge between courses drawn as thinly as a
+*`src/graph/curvature.ts`, `src/graph/transport.ts`*
+
+A link between two nodes can be a bottleneck or a thread in a weave. The
+picture should say which — a bridge between clusters drawn as thinly as a
 link inside a clique tells the reader nothing about how the graph holds
 together. Ollivier's Ricci curvature is the number that distinguishes
 them, and it is computed, not tuned.
@@ -47,8 +49,8 @@ The range is $[-2, 1]$.
   inside a clique stays positive. That is the whole story of a bottleneck
   in one number.
 
-On a notes graph the reading is the same: a link inside a course's cluster
-is positive, a link that alone joins two courses is negative, and the
+On a real graph the reading is the same: a link inside a cluster
+is positive, a link that alone joins two clusters is negative, and the
 most negative edges are the graph's load-bearing beams.
 
 ## Computing it exactly
@@ -81,7 +83,7 @@ two walks already agree on — $\min(m_i(u), m_j(u))$ at every $u$ — stays
 where it is: with a metric cost, moving overlapping mass away and
 replacing it can never beat leaving it, so only each side's surplus
 enters the transport. Inside a clique the neighbourhoods overlap almost
-entirely and the problem left is a few nodes a side; on the notes graph,
+entirely and the problem left is a few nodes a side; on the nodes graph,
 fourteen hundred links take some twenty milliseconds.
 
 Entropic regularisation (Sinkhorn) was considered and set aside: with unit

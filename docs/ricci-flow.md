@@ -1,5 +1,7 @@
 # Ricci flow
 
+*`src/graph/ricci-flow.ts`*
+
 Curvature says, link by link, what the graph is made of: a bridge is
 negative, a thread in a weave positive. Ricci flow lets the graph act on
 that knowledge. Every link is given a length; each step a bridge grows
@@ -31,7 +33,7 @@ bridges run away. A positive curvature shortens a link, and a shorter
 link inside a weave overlaps the neighbourhoods more. Left alone the
 whole graph would also shrink or swell; so after each step the lengths
 are rescaled to a mean of one — the normalised flow, which keeps the
-sky's size and lets only its shape move. A floor and a ceiling stop a
+graph's size and lets only its shape move. A floor and a ceiling stop a
 length from collapsing to nothing or running past the drawing.
 
 Rescaling changes no curvature: $W_1$ and $\ell_e$ scale together, so
@@ -63,7 +65,7 @@ shrinking cliques — and the test asks only that it has passed the cut.
 
 The lengths are a picture; a count is a choice of cut. Keep every link no
 longer than the cut and take the connected components. A fixed cut —
-twice the mean, say — is brittle: one new hub note next week shifts the
+twice the mean, say — is brittle: one new hub node next week shifts the
 curvature of every link near it, and the count would swing with the
 noise. So the cut is chosen the way the flow's authors choose it: try the
 cut just below every distinct length above the mean, and keep the one
@@ -82,9 +84,9 @@ candidate above the mean and is one community.
 
 ### How many the cut made
 
-The count is how many pieces the sky is in; it is not how many the flow
-put it in. A notes graph usually arrives with a few components already —
-a course nobody has linked out of yet, a stray pair — and the cut inherits
+The count is how many pieces the graph is in; it is not how many the flow
+put it in. A nodes graph usually arrives with a few components already —
+a cluster nothing links out of, a stray pair — and the cut inherits
 every one of them without doing anything. So `cutCommunities` also returns
 
 $$\text{parted} = \text{count} - c(G),$$
@@ -100,7 +102,7 @@ what the flow *did* should say this number.
 The ceiling exists so a runaway bridge cannot leave the drawing, and it
 binds before the rescaling, which means it also has to leave room for the
 flow's own answer. At $\varepsilon = \tfrac12$ and ten steps a bridge in a
-real notes graph reaches four in half a dozen steps and then sits there,
+real nodes graph reaches four in half a dozen steps and then sits there,
 pinned — and a length pinned at the ceiling is a length that has stopped
 saying anything: every saturated seam reports the same number, the mean
 lands above it, and the cut chosen from the lengths above the mean can end

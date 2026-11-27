@@ -1,9 +1,9 @@
 /* The heat kernel signature, held to its identities. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { heatKernelSignature, magnitudes, HKS_SCALES } from "../src/sky/hks.ts";
-import { normalisedLaplacian } from "../src/sky/laplacian.ts";
-import type { Graph } from "../src/sky/laplacian.ts";
+import { heatKernelSignature, magnitudes, HKS_SCALES } from "../src/graph/hks.ts";
+import { normalisedLaplacian } from "../src/graph/laplacian.ts";
+import type { Graph } from "../src/graph/laplacian.ts";
 import { jacobiEigen } from "../src/math/linalg.ts";
 
 const near = (a: number, b: number, tol = 1e-9) =>
@@ -18,7 +18,7 @@ const dense = (g: Graph): { A: Float64Array; n: number } => {
   return { A, n: g.n };
 };
 
-/* two 6-cliques over a bridge, as in sky.test.ts: 31 edges, so 2m = 62;
+/* two 6-cliques over a bridge, as in graph.test.ts: 31 edges, so 2m = 62;
    degree 5 everywhere except the bridge ends, which have 6 */
 const cliques = (): Graph => {
   const edges: [number, number][] = [];

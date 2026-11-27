@@ -2,8 +2,8 @@
    can be done by hand, and the solver against brute force where it can't. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ollivierRicci, transportCost } from "../src/sky/curvature.ts";
-import type { Graph } from "../src/sky/laplacian.ts";
+import { ollivierRicci, transportCost } from "../src/graph/curvature.ts";
+import type { Graph } from "../src/graph/laplacian.ts";
 import { rng } from "../src/rng.ts";
 
 const near = (a: number, b: number, tol = 1e-9) =>

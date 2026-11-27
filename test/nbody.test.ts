@@ -2,16 +2,16 @@
    integrator must have, and the perturbation against its limits. */
 import test from "node:test";
 import assert from "node:assert/strict";
-import { keplerState, leapfrog, energy, phasePerturbations, G_PLANETS } from "../src/orbits/nbody.ts";
-import { orbitFrac, elementsFrom, FIT } from "../src/orbits/kepler.ts";
-import type { Elements } from "../src/orbits/kepler.ts";
+import { keplerState, leapfrog, energy, phasePerturbations } from "../src/orbit/nbody.ts";
+import { orbitFrac } from "../src/orbit/kepler.ts";
+import type { Elements } from "../src/orbit/kepler.ts";
 
 const near = (a: number, b: number, tol = 1e-9) =>
   assert.ok(Math.abs(a - b) <= tol, `${a} !~ ${b} (tol ${tol})`);
 const TAU = 2 * Math.PI;
-const K = FIT.k;
+const K = 179627484;   /* the periods' unit: a = 1 circles in about fifty hours, in ms */
 
-const el = (a: number, e: number, M0 = 0): Elements => ({ a, e, T: K * Math.pow(a, 1.5), M0, tilt: 0 });
+const el = (a: number, e: number, M0 = 0): Elements => ({ a, e, T: K * Math.pow(a, 1.5), M0 });
 
 test("keplerState obeys the vis-viva equation and the orbit's own period", () => {
   for (const [a, e] of [[1, 0], [0.5, 0.2], [0.8, 0.1]] as const) {
@@ -107,15 +107,16 @@ test("the perturbation is linear in G while G is small", () => {
   }
 });
 
-test("four weeks of the sky's own planets shift phases by a fraction of a percent", () => {
-  /* eleven repos on the fitted elements, masses from a spread of activity;
-     with G_PLANETS the largest shift over four weeks is small but not zero */
+test("eleven light bodies over four weeks shift phases by a fraction of a percent", () => {
+  /* eleven bodies from a = 0.26 out to 1, the inner ones the heavier, each
+     pulling with at most 2e-7 of the centre's gravity: the largest shift
+     over four weeks is small but not zero */
   const bodies = Array.from({ length: 11 }, (_, i) => {
-    const act = 1 - i / 10;
-    return { m: act, el: elementsFrom(act, (i % 3) / 3, 0, i / 11) };
+    const m = 1 - i / 10, a = 0.261629 + (1 - 0.261629) * (1 - m);
+    return { m, el: { a, e: 0.2 * ((i % 3) / 3), T: K * Math.pow(a, 1.5), M0: (i / 11) * TAU } };
   });
   const day = 86400e3, tmin = Math.min(...bodies.map(b => b.el.T));
-  const d = phasePerturbations(bodies, 0, 28 * day, tmin / 64, G_PLANETS);
+  const d = phasePerturbations(bodies, 0, 28 * day, tmin / 64, 2e-7);
   let big = 0;
   for (const v of d) big = Math.max(big, Math.abs(v));
   assert.ok(big > 1e-4 && big < 1e-2, `largest shift ${big}`);
@@ -124,7 +125,7 @@ test("four weeks of the sky's own planets shift phases by a fraction of a percen
 
 test("degenerate spans and steps give zeros, not NaN", () => {
   const bodies = [{ m: 1, el: el(1, 0, 0) }];
-  assert.deepEqual([...phasePerturbations(bodies, 5, 5, 1)], [0]);
-  assert.deepEqual([...phasePerturbations(bodies, 0, 10, 0)], [0]);
-  assert.deepEqual([...phasePerturbations([], 0, 10, 1)], []);
+  assert.deepEqual([...phasePerturbations(bodies, 5, 5, 1, 1e-6)], [0]);
+  assert.deepEqual([...phasePerturbations(bodies, 0, 10, 0, 1e-6)], [0]);
+  assert.deepEqual([...phasePerturbations([], 0, 10, 1, 1e-6)], []);
 });

@@ -60,10 +60,10 @@ test("the packed package is dist and nothing else, and answers as the source doe
 
     /* and its types resolve for a consumer that type-checks */
     writeFileSync(join(tmp, "consumer.ts"), `
-      import { ollivierRicci, type Graph, type FlowFeed } from "@mmogr/orrery";
+      import { ollivierRicci, type Graph, type Elements } from "@mmogr/orrery";
       const g: Graph = { n: 2, edges: [[0, 1]] };
       const k: Float64Array = ollivierRicci(g);
-      export const flow: FlowFeed | null = null;
+      export const orbit: Elements | null = null;
       export default k;`);
     writeFileSync(join(tmp, "tsconfig.json"), JSON.stringify({
       compilerOptions: { target: "es2022", module: "esnext", moduleResolution: "bundler", strict: true, noEmit: true, skipLibCheck: false },
