@@ -1,6 +1,6 @@
 {
   "name": "@mmogr/orrery",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Small, exact mathematics for pages that draw their data: a graph's spectrum, heat and curvature, Kepler's problem, frame-rate-free motion, and the dense maths underneath, with the derivations.",
   "type": "module",
   "license": "MIT",
